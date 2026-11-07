@@ -1,0 +1,4722 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "SpecKitFinex Exchange API",
+    "version": "2.0.0",
+    "description": "Design contract for Spring Boot4.1.0/JDK21 single-instance memory mode. api.md and feature spec supply normative business invariants and code precedence. Every GET works without a body or Content-Type/Accept header. Every app-generated response uses the common envelope; malformed transport with no response remains outside that guarantee. Internal base is /internal; participant resources are directly at root; only GET/status is public. Internal matching precedes root matching. HTTP outcome policy2.0: handled application rejections return HTTP200 with success=false; request/security/system failures retain4xx/5xx. Clients must inspect the envelope. All responses include Cache-Control:no-store."
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:8080"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Exchange"
+    }
+  ],
+  "paths": {
+    "/product/equity": {
+      "post": {
+        "operationId": "createEquity",
+        "summary": "Create Equity",
+        "servers": [
+          {
+            "url": "http://127.0.0.1:8080/internal"
+          }
+        ],
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "ADMINISTRATOR"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Create Equity",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Generated per HTTP response, including replay.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "description": "No API outcome may be cached, including a business rejection carried by HTTP200.",
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductCreated"
+                },
+                "examples": {
+                  "added": {
+                    "$ref": "#/components/examples/productCreated"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Http400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Http401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Http403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Http404"
+          },
+          "405": {
+            "$ref": "#/components/responses/Http405"
+          },
+          "413": {
+            "$ref": "#/components/responses/Http413"
+          },
+          "415": {
+            "$ref": "#/components/responses/Http415"
+          },
+          "429": {
+            "$ref": "#/components/responses/Http429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Http500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Http503"
+          },
+          "431": {
+            "$ref": "#/components/responses/Http431"
+          },
+          "200": {
+            "description": "Handled application-level rejection; inspect success=false, responseCode, and data.reasonCode.",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Generated per HTTP response, including replay.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "description": "No API outcome may be cached, including a business rejection carried by HTTP200.",
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApplicationFailure"
+                    },
+                    {
+                      "properties": {
+                        "responseCode": {
+                          "type": "integer",
+                          "enum": [
+                            1002,
+                            9000
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductCreate"
+              }
+            }
+          }
+        },
+        "x-business-failure-http-status": 200,
+        "x-http-outcome-policy": "HTTP200 business decision;201 accepted creation;4xx/5xx request/security/admission/system failure.",
+        "x-business-failure-codes": [
+          1002,
+          9000
+        ]
+      },
+      "get": {
+        "operationId": "findEquities",
+        "summary": "List products or find by normalized symbol",
+        "servers": [
+          {
+            "url": "http://127.0.0.1:8080/internal"
+          },
+          {
+            "url": "http://127.0.0.1:8080"
+          }
+        ],
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "ADMINISTRATOR",
+          "PARTICIPANT"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Symbol"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Cursor"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List products or find by normalized symbol; handled business rejection also uses HTTP200 with success=false.",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Generated per HTTP response, including replay.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "description": "No API outcome may be cached, including a business rejection carried by HTTP200.",
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ProductsFound"
+                    },
+                    {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/ApplicationFailure"
+                        },
+                        {
+                          "properties": {
+                            "responseCode": {
+                              "type": "integer",
+                              "enum": [
+                                1004,
+                                999999
+                              ]
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Http400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Http401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Http403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Http404"
+          },
+          "405": {
+            "$ref": "#/components/responses/Http405"
+          },
+          "413": {
+            "$ref": "#/components/responses/Http413"
+          },
+          "415": {
+            "$ref": "#/components/responses/Http415"
+          },
+          "429": {
+            "$ref": "#/components/responses/Http429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Http500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Http503"
+          },
+          "431": {
+            "$ref": "#/components/responses/Http431"
+          }
+        },
+        "x-roles-by-server": {
+          "http://127.0.0.1:8080/internal": [
+            "ADMINISTRATOR"
+          ],
+          "http://127.0.0.1:8080": [
+            "PARTICIPANT"
+          ]
+        },
+        "x-business-failure-http-status": 200,
+        "x-http-outcome-policy": "HTTP200 business decision;201 accepted creation;4xx/5xx request/security/admission/system failure.",
+        "x-business-failure-codes": [
+          1004,
+          999999
+        ]
+      }
+    },
+    "/product/equity/{id}": {
+      "get": {
+        "operationId": "getEquity",
+        "summary": "Find product by ID",
+        "servers": [
+          {
+            "url": "http://127.0.0.1:8080/internal"
+          },
+          {
+            "url": "http://127.0.0.1:8080"
+          }
+        ],
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "ADMINISTRATOR",
+          "PARTICIPANT"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Find product by ID; handled business rejection also uses HTTP200 with success=false.",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Generated per HTTP response, including replay.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "description": "No API outcome may be cached, including a business rejection carried by HTTP200.",
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ProductFound"
+                    },
+                    {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/ApplicationFailure"
+                        },
+                        {
+                          "properties": {
+                            "responseCode": {
+                              "type": "integer",
+                              "enum": [
+                                1004,
+                                999999
+                              ]
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "examples": {
+                  "missing": {
+                    "$ref": "#/components/examples/entityNotFound"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Http400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Http401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Http403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Http404"
+          },
+          "405": {
+            "$ref": "#/components/responses/Http405"
+          },
+          "413": {
+            "$ref": "#/components/responses/Http413"
+          },
+          "415": {
+            "$ref": "#/components/responses/Http415"
+          },
+          "429": {
+            "$ref": "#/components/responses/Http429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Http500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Http503"
+          },
+          "431": {
+            "$ref": "#/components/responses/Http431"
+          }
+        },
+        "x-roles-by-server": {
+          "http://127.0.0.1:8080/internal": [
+            "ADMINISTRATOR"
+          ],
+          "http://127.0.0.1:8080": [
+            "PARTICIPANT"
+          ]
+        },
+        "x-business-failure-http-status": 200,
+        "x-http-outcome-policy": "HTTP200 business decision;201 accepted creation;4xx/5xx request/security/admission/system failure.",
+        "x-business-failure-codes": [
+          1004,
+          999999
+        ]
+      },
+      "patch": {
+        "operationId": "updateEquity",
+        "summary": "Update product",
+        "servers": [
+          {
+            "url": "http://127.0.0.1:8080/internal"
+          }
+        ],
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "ADMINISTRATOR"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Id"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Update product; handled business rejection also uses HTTP200 with success=false.",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Generated per HTTP response, including replay.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "description": "No API outcome may be cached, including a business rejection carried by HTTP200.",
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ProductUpdated"
+                    },
+                    {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/ApplicationFailure"
+                        },
+                        {
+                          "properties": {
+                            "responseCode": {
+                              "type": "integer",
+                              "enum": [
+                                1002,
+                                1004,
+                                9000
+                              ]
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Http400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Http401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Http403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Http404"
+          },
+          "405": {
+            "$ref": "#/components/responses/Http405"
+          },
+          "413": {
+            "$ref": "#/components/responses/Http413"
+          },
+          "415": {
+            "$ref": "#/components/responses/Http415"
+          },
+          "429": {
+            "$ref": "#/components/responses/Http429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Http500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Http503"
+          },
+          "431": {
+            "$ref": "#/components/responses/Http431"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductPatch"
+              }
+            }
+          }
+        },
+        "x-business-failure-http-status": 200,
+        "x-http-outcome-policy": "HTTP200 business decision;201 accepted creation;4xx/5xx request/security/admission/system failure.",
+        "x-business-failure-codes": [
+          1002,
+          1004,
+          9000
+        ]
+      },
+      "delete": {
+        "operationId": "deleteEquity",
+        "summary": "Delete product",
+        "servers": [
+          {
+            "url": "http://127.0.0.1:8080/internal"
+          }
+        ],
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "ADMINISTRATOR"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Id"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Delete product; handled business rejection also uses HTTP200 with success=false.",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Generated per HTTP response, including replay.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "description": "No API outcome may be cached, including a business rejection carried by HTTP200.",
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ProductDeleted"
+                    },
+                    {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/ApplicationFailure"
+                        },
+                        {
+                          "properties": {
+                            "responseCode": {
+                              "type": "integer",
+                              "enum": [
+                                1002,
+                                1004,
+                                9000
+                              ]
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Http400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Http401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Http403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Http404"
+          },
+          "405": {
+            "$ref": "#/components/responses/Http405"
+          },
+          "413": {
+            "$ref": "#/components/responses/Http413"
+          },
+          "415": {
+            "$ref": "#/components/responses/Http415"
+          },
+          "429": {
+            "$ref": "#/components/responses/Http429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Http500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Http503"
+          },
+          "431": {
+            "$ref": "#/components/responses/Http431"
+          }
+        },
+        "x-business-failure-http-status": 200,
+        "x-http-outcome-policy": "HTTP200 business decision;201 accepted creation;4xx/5xx request/security/admission/system failure.",
+        "x-business-failure-codes": [
+          1002,
+          1004,
+          9000
+        ]
+      }
+    },
+    "/participant/broker": {
+      "post": {
+        "operationId": "createBroker",
+        "summary": "Create Broker and identity",
+        "servers": [
+          {
+            "url": "http://127.0.0.1:8080/internal"
+          }
+        ],
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "ADMINISTRATOR"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Create Broker and identity",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Generated per HTTP response, including replay.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "description": "No API outcome may be cached, including a business rejection carried by HTTP200.",
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParticipantCreated"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Http400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Http401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Http403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Http404"
+          },
+          "405": {
+            "$ref": "#/components/responses/Http405"
+          },
+          "413": {
+            "$ref": "#/components/responses/Http413"
+          },
+          "415": {
+            "$ref": "#/components/responses/Http415"
+          },
+          "429": {
+            "$ref": "#/components/responses/Http429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Http500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Http503"
+          },
+          "431": {
+            "$ref": "#/components/responses/Http431"
+          },
+          "200": {
+            "description": "Handled application-level rejection; inspect success=false, responseCode, and data.reasonCode.",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Generated per HTTP response, including replay.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "description": "No API outcome may be cached, including a business rejection carried by HTTP200.",
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApplicationFailure"
+                    },
+                    {
+                      "properties": {
+                        "responseCode": {
+                          "type": "integer",
+                          "enum": [
+                            1008,
+                            9000
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParticipantCreate"
+              }
+            }
+          }
+        },
+        "x-business-failure-http-status": 200,
+        "x-http-outcome-policy": "HTTP200 business decision;201 accepted creation;4xx/5xx request/security/admission/system failure.",
+        "x-business-failure-codes": [
+          1008,
+          9000
+        ]
+      },
+      "get": {
+        "operationId": "listBrokers",
+        "summary": "List Brokers",
+        "servers": [
+          {
+            "url": "http://127.0.0.1:8080/internal"
+          }
+        ],
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "ADMINISTRATOR"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Cursor"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List Brokers; handled business rejection also uses HTTP200 with success=false.",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Generated per HTTP response, including replay.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "description": "No API outcome may be cached, including a business rejection carried by HTTP200.",
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ParticipantsFound"
+                    },
+                    {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/ApplicationFailure"
+                        },
+                        {
+                          "properties": {
+                            "responseCode": {
+                              "type": "integer",
+                              "enum": [
+                                1010,
+                                999999
+                              ]
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Http400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Http401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Http403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Http404"
+          },
+          "405": {
+            "$ref": "#/components/responses/Http405"
+          },
+          "413": {
+            "$ref": "#/components/responses/Http413"
+          },
+          "415": {
+            "$ref": "#/components/responses/Http415"
+          },
+          "429": {
+            "$ref": "#/components/responses/Http429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Http500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Http503"
+          },
+          "431": {
+            "$ref": "#/components/responses/Http431"
+          }
+        },
+        "x-business-failure-http-status": 200,
+        "x-http-outcome-policy": "HTTP200 business decision;201 accepted creation;4xx/5xx request/security/admission/system failure.",
+        "x-business-failure-codes": [
+          1010,
+          999999
+        ]
+      }
+    },
+    "/participant/broker/{id}": {
+      "get": {
+        "operationId": "getBroker",
+        "summary": "Find Broker",
+        "servers": [
+          {
+            "url": "http://127.0.0.1:8080/internal"
+          }
+        ],
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "ADMINISTRATOR"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Find Broker; handled business rejection also uses HTTP200 with success=false.",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Generated per HTTP response, including replay.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "description": "No API outcome may be cached, including a business rejection carried by HTTP200.",
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ParticipantFound"
+                    },
+                    {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/ApplicationFailure"
+                        },
+                        {
+                          "properties": {
+                            "responseCode": {
+                              "type": "integer",
+                              "enum": [
+                                1010,
+                                999999
+                              ]
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Http400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Http401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Http403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Http404"
+          },
+          "405": {
+            "$ref": "#/components/responses/Http405"
+          },
+          "413": {
+            "$ref": "#/components/responses/Http413"
+          },
+          "415": {
+            "$ref": "#/components/responses/Http415"
+          },
+          "429": {
+            "$ref": "#/components/responses/Http429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Http500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Http503"
+          },
+          "431": {
+            "$ref": "#/components/responses/Http431"
+          }
+        },
+        "x-business-failure-http-status": 200,
+        "x-http-outcome-policy": "HTTP200 business decision;201 accepted creation;4xx/5xx request/security/admission/system failure.",
+        "x-business-failure-codes": [
+          1010,
+          999999
+        ]
+      },
+      "patch": {
+        "operationId": "updateBroker",
+        "summary": "Update Broker name or rotate password",
+        "servers": [
+          {
+            "url": "http://127.0.0.1:8080/internal"
+          }
+        ],
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "ADMINISTRATOR"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Id"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Update Broker name or rotate password; handled business rejection also uses HTTP200 with success=false.",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Generated per HTTP response, including replay.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "description": "No API outcome may be cached, including a business rejection carried by HTTP200.",
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ParticipantUpdated"
+                    },
+                    {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/ApplicationFailure"
+                        },
+                        {
+                          "properties": {
+                            "responseCode": {
+                              "type": "integer",
+                              "enum": [
+                                1008,
+                                1010,
+                                9000
+                              ]
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Http400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Http401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Http403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Http404"
+          },
+          "405": {
+            "$ref": "#/components/responses/Http405"
+          },
+          "413": {
+            "$ref": "#/components/responses/Http413"
+          },
+          "415": {
+            "$ref": "#/components/responses/Http415"
+          },
+          "429": {
+            "$ref": "#/components/responses/Http429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Http500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Http503"
+          },
+          "431": {
+            "$ref": "#/components/responses/Http431"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParticipantPatch"
+              }
+            }
+          }
+        },
+        "x-business-failure-http-status": 200,
+        "x-http-outcome-policy": "HTTP200 business decision;201 accepted creation;4xx/5xx request/security/admission/system failure.",
+        "x-business-failure-codes": [
+          1008,
+          1010,
+          9000
+        ]
+      },
+      "delete": {
+        "operationId": "deleteBroker",
+        "summary": "Delete Broker and disable identity",
+        "servers": [
+          {
+            "url": "http://127.0.0.1:8080/internal"
+          }
+        ],
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "ADMINISTRATOR"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Id"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Delete Broker and disable identity; handled business rejection also uses HTTP200 with success=false.",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Generated per HTTP response, including replay.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "description": "No API outcome may be cached, including a business rejection carried by HTTP200.",
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ParticipantDeleted"
+                    },
+                    {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/ApplicationFailure"
+                        },
+                        {
+                          "properties": {
+                            "responseCode": {
+                              "type": "integer",
+                              "enum": [
+                                1008,
+                                1010,
+                                9000
+                              ]
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Http400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Http401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Http403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Http404"
+          },
+          "405": {
+            "$ref": "#/components/responses/Http405"
+          },
+          "413": {
+            "$ref": "#/components/responses/Http413"
+          },
+          "415": {
+            "$ref": "#/components/responses/Http415"
+          },
+          "429": {
+            "$ref": "#/components/responses/Http429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Http500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Http503"
+          },
+          "431": {
+            "$ref": "#/components/responses/Http431"
+          }
+        },
+        "x-business-failure-http-status": 200,
+        "x-http-outcome-policy": "HTTP200 business decision;201 accepted creation;4xx/5xx request/security/admission/system failure.",
+        "x-business-failure-codes": [
+          1008,
+          1010,
+          9000
+        ]
+      }
+    },
+    "/order": {
+      "post": {
+        "operationId": "submitOrder",
+        "summary": "Submit order for caller",
+        "servers": [
+          {
+            "url": "http://127.0.0.1:8080"
+          }
+        ],
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "PARTICIPANT"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Submit order for caller",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Generated per HTTP response, including replay.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "description": "No API outcome may be cached, including a business rejection carried by HTTP200.",
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderAccepted"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Http400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Http401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Http403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Http404"
+          },
+          "405": {
+            "$ref": "#/components/responses/Http405"
+          },
+          "413": {
+            "$ref": "#/components/responses/Http413"
+          },
+          "415": {
+            "$ref": "#/components/responses/Http415"
+          },
+          "429": {
+            "$ref": "#/components/responses/Http429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Http500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Http503"
+          },
+          "431": {
+            "$ref": "#/components/responses/Http431"
+          },
+          "200": {
+            "description": "Handled application-level rejection; inspect success=false, responseCode, and data.reasonCode.",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Generated per HTTP response, including replay.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "description": "No API outcome may be cached, including a business rejection carried by HTTP200.",
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApplicationFailure"
+                    },
+                    {
+                      "properties": {
+                        "responseCode": {
+                          "type": "integer",
+                          "enum": [
+                            1014
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderSubmit"
+              }
+            }
+          }
+        },
+        "x-business-failure-http-status": 200,
+        "x-http-outcome-policy": "HTTP200 business decision;201 accepted creation;4xx/5xx request/security/admission/system failure.",
+        "x-business-failure-codes": [
+          1014
+        ]
+      }
+    },
+    "/order/{id}": {
+      "get": {
+        "operationId": "getOrder",
+        "summary": "Read own order report",
+        "servers": [
+          {
+            "url": "http://127.0.0.1:8080"
+          }
+        ],
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "PARTICIPANT"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Read own order report; handled business rejection also uses HTTP200 with success=false.",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Generated per HTTP response, including replay.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "description": "No API outcome may be cached, including a business rejection carried by HTTP200.",
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/OrderFound"
+                    },
+                    {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/ApplicationFailure"
+                        },
+                        {
+                          "properties": {
+                            "responseCode": {
+                              "type": "integer",
+                              "enum": [
+                                1016
+                              ]
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Http400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Http401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Http403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Http404"
+          },
+          "405": {
+            "$ref": "#/components/responses/Http405"
+          },
+          "413": {
+            "$ref": "#/components/responses/Http413"
+          },
+          "415": {
+            "$ref": "#/components/responses/Http415"
+          },
+          "429": {
+            "$ref": "#/components/responses/Http429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Http500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Http503"
+          },
+          "431": {
+            "$ref": "#/components/responses/Http431"
+          }
+        },
+        "x-business-failure-http-status": 200,
+        "x-http-outcome-policy": "HTTP200 business decision;201 accepted creation;4xx/5xx request/security/admission/system failure.",
+        "x-business-failure-codes": [
+          1016
+        ]
+      },
+      "patch": {
+        "operationId": "amendOrder",
+        "summary": "Amend using current expectedVersion",
+        "servers": [
+          {
+            "url": "http://127.0.0.1:8080"
+          }
+        ],
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "PARTICIPANT"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Id"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Amend using current expectedVersion; handled business rejection also uses HTTP200 with success=false.",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Generated per HTTP response, including replay.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "description": "No API outcome may be cached, including a business rejection carried by HTTP200.",
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/OrderUpdated"
+                    },
+                    {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/ApplicationFailure"
+                        },
+                        {
+                          "properties": {
+                            "responseCode": {
+                              "type": "integer",
+                              "enum": [
+                                1014,
+                                1016
+                              ]
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "examples": {
+                  "stale": {
+                    "$ref": "#/components/examples/staleAmendment"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Http400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Http401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Http403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Http404"
+          },
+          "405": {
+            "$ref": "#/components/responses/Http405"
+          },
+          "413": {
+            "$ref": "#/components/responses/Http413"
+          },
+          "415": {
+            "$ref": "#/components/responses/Http415"
+          },
+          "429": {
+            "$ref": "#/components/responses/Http429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Http500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Http503"
+          },
+          "431": {
+            "$ref": "#/components/responses/Http431"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderPatch"
+              }
+            }
+          }
+        },
+        "x-business-failure-http-status": 200,
+        "x-http-outcome-policy": "HTTP200 business decision;201 accepted creation;4xx/5xx request/security/admission/system failure.",
+        "x-business-failure-codes": [
+          1014,
+          1016
+        ]
+      },
+      "delete": {
+        "operationId": "cancelOrder",
+        "summary": "Cancel latest remaining quantity without expectedVersion",
+        "servers": [
+          {
+            "url": "http://127.0.0.1:8080"
+          }
+        ],
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "PARTICIPANT"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Id"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cancel latest remaining quantity without expectedVersion; handled business rejection also uses HTTP200 with success=false.",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Generated per HTTP response, including replay.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "description": "No API outcome may be cached, including a business rejection carried by HTTP200.",
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/OrderCancelled"
+                    },
+                    {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/ApplicationFailure"
+                        },
+                        {
+                          "properties": {
+                            "responseCode": {
+                              "type": "integer",
+                              "enum": [
+                                1014,
+                                1016,
+                                1018
+                              ]
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Http400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Http401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Http403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Http404"
+          },
+          "405": {
+            "$ref": "#/components/responses/Http405"
+          },
+          "413": {
+            "$ref": "#/components/responses/Http413"
+          },
+          "415": {
+            "$ref": "#/components/responses/Http415"
+          },
+          "429": {
+            "$ref": "#/components/responses/Http429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Http500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Http503"
+          },
+          "431": {
+            "$ref": "#/components/responses/Http431"
+          }
+        },
+        "x-business-failure-http-status": 200,
+        "x-http-outcome-policy": "HTTP200 business decision;201 accepted creation;4xx/5xx request/security/admission/system failure.",
+        "x-business-failure-codes": [
+          1014,
+          1016,
+          1018
+        ]
+      }
+    },
+    "/order/trades": {
+      "get": {
+        "operationId": "listTrades",
+        "summary": "List own trades",
+        "servers": [
+          {
+            "url": "http://127.0.0.1:8080"
+          }
+        ],
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "PARTICIPANT"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProductFilter"
+          },
+          {
+            "$ref": "#/components/parameters/OrderFilter"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Cursor"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List own trades; handled business rejection also uses HTTP200 with success=false.",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Generated per HTTP response, including replay.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "description": "No API outcome may be cached, including a business rejection carried by HTTP200.",
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/TradesFound"
+                    },
+                    {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/ApplicationFailure"
+                        },
+                        {
+                          "properties": {
+                            "responseCode": {
+                              "type": "integer",
+                              "enum": [
+                                999999
+                              ]
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Http400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Http401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Http403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Http404"
+          },
+          "405": {
+            "$ref": "#/components/responses/Http405"
+          },
+          "413": {
+            "$ref": "#/components/responses/Http413"
+          },
+          "415": {
+            "$ref": "#/components/responses/Http415"
+          },
+          "429": {
+            "$ref": "#/components/responses/Http429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Http500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Http503"
+          },
+          "431": {
+            "$ref": "#/components/responses/Http431"
+          }
+        },
+        "x-business-failure-http-status": 200,
+        "x-http-outcome-policy": "HTTP200 business decision;201 accepted creation;4xx/5xx request/security/admission/system failure.",
+        "x-business-failure-codes": [
+          999999
+        ]
+      }
+    },
+    "/order/trades/{id}": {
+      "get": {
+        "operationId": "getTrade",
+        "summary": "Read own trade",
+        "servers": [
+          {
+            "url": "http://127.0.0.1:8080"
+          }
+        ],
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "PARTICIPANT"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Read own trade; handled business rejection also uses HTTP200 with success=false.",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Generated per HTTP response, including replay.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "description": "No API outcome may be cached, including a business rejection carried by HTTP200.",
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/TradeFound"
+                    },
+                    {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/ApplicationFailure"
+                        },
+                        {
+                          "properties": {
+                            "responseCode": {
+                              "type": "integer",
+                              "enum": [
+                                999999
+                              ]
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Http400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Http401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Http403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Http404"
+          },
+          "405": {
+            "$ref": "#/components/responses/Http405"
+          },
+          "413": {
+            "$ref": "#/components/responses/Http413"
+          },
+          "415": {
+            "$ref": "#/components/responses/Http415"
+          },
+          "429": {
+            "$ref": "#/components/responses/Http429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Http500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Http503"
+          },
+          "431": {
+            "$ref": "#/components/responses/Http431"
+          }
+        },
+        "x-business-failure-http-status": 200,
+        "x-http-outcome-policy": "HTTP200 business decision;201 accepted creation;4xx/5xx request/security/admission/system failure.",
+        "x-business-failure-codes": [
+          999999
+        ]
+      }
+    },
+    "/order/{id}/trades": {
+      "get": {
+        "operationId": "listOrderTrades",
+        "summary": "Read all owned order trade references by pages",
+        "servers": [
+          {
+            "url": "http://127.0.0.1:8080"
+          }
+        ],
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "PARTICIPANT"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Id"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Cursor"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Read all owned order trade references by pages; handled business rejection also uses HTTP200 with success=false.",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Generated per HTTP response, including replay.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "description": "No API outcome may be cached, including a business rejection carried by HTTP200.",
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/TradesFound"
+                    },
+                    {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/ApplicationFailure"
+                        },
+                        {
+                          "properties": {
+                            "responseCode": {
+                              "type": "integer",
+                              "enum": [
+                                1016,
+                                999999
+                              ]
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Http400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Http401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Http403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Http404"
+          },
+          "405": {
+            "$ref": "#/components/responses/Http405"
+          },
+          "413": {
+            "$ref": "#/components/responses/Http413"
+          },
+          "415": {
+            "$ref": "#/components/responses/Http415"
+          },
+          "429": {
+            "$ref": "#/components/responses/Http429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Http500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Http503"
+          },
+          "431": {
+            "$ref": "#/components/responses/Http431"
+          }
+        },
+        "x-business-failure-http-status": 200,
+        "x-http-outcome-policy": "HTTP200 business decision;201 accepted creation;4xx/5xx request/security/admission/system failure.",
+        "x-business-failure-codes": [
+          1016,
+          999999
+        ]
+      }
+    },
+    "/orderBook/{productId}": {
+      "get": {
+        "operationId": "getOrderBook",
+        "summary": "Read depth and metrics",
+        "servers": [
+          {
+            "url": "http://127.0.0.1:8080"
+          }
+        ],
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "PARTICIPANT"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProductId"
+          },
+          {
+            "$ref": "#/components/parameters/BookSide"
+          },
+          {
+            "$ref": "#/components/parameters/BookPrice"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Cursor"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Read depth and metrics; handled business rejection also uses HTTP200 with success=false.",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Generated per HTTP response, including replay.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "description": "No API outcome may be cached, including a business rejection carried by HTTP200.",
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BookFound"
+                    },
+                    {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/ApplicationFailure"
+                        },
+                        {
+                          "properties": {
+                            "responseCode": {
+                              "type": "integer",
+                              "enum": [
+                                999999
+                              ]
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Http400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Http401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Http403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Http404"
+          },
+          "405": {
+            "$ref": "#/components/responses/Http405"
+          },
+          "413": {
+            "$ref": "#/components/responses/Http413"
+          },
+          "415": {
+            "$ref": "#/components/responses/Http415"
+          },
+          "429": {
+            "$ref": "#/components/responses/Http429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Http500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Http503"
+          },
+          "431": {
+            "$ref": "#/components/responses/Http431"
+          }
+        },
+        "x-business-failure-http-status": 200,
+        "x-http-outcome-policy": "HTTP200 business decision;201 accepted creation;4xx/5xx request/security/admission/system failure.",
+        "x-business-failure-codes": [
+          999999
+        ]
+      }
+    },
+    "/status": {
+      "get": {
+        "operationId": "getStatus",
+        "summary": "Confirm process running",
+        "servers": [
+          {
+            "url": "http://127.0.0.1:8080"
+          }
+        ],
+        "security": [],
+        "x-required-roles": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Confirm process running",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Generated per HTTP response, including replay.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "description": "No API outcome may be cached, including a business rejection carried by HTTP200.",
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusFound"
+                },
+                "examples": {
+                  "running": {
+                    "$ref": "#/components/examples/status"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/Http500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Http503"
+          }
+        },
+        "x-http-outcome-policy": "HTTP200 business decision;201 accepted creation;4xx/5xx request/security/admission/system failure."
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "basicAuth": {
+        "type": "http",
+        "scheme": "basic",
+        "description": "TLS required off loopback. Internal Administrator and external active Broker are distinct roles."
+      }
+    },
+    "parameters": {
+      "Id": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "$ref": "#/components/schemas/Id"
+        }
+      },
+      "ProductId": {
+        "name": "productId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "$ref": "#/components/schemas/Id"
+        }
+      },
+      "IdempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[\\x21-\\x7E]+$"
+        }
+      },
+      "Limit": {
+        "name": "limit",
+        "in": "query",
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 500,
+          "default": 100
+        }
+      },
+      "Cursor": {
+        "name": "cursor",
+        "in": "query",
+        "schema": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        }
+      },
+      "Symbol": {
+        "name": "symbol",
+        "in": "query",
+        "schema": {
+          "$ref": "#/components/schemas/SymbolInput"
+        }
+      },
+      "ProductFilter": {
+        "name": "productId",
+        "in": "query",
+        "schema": {
+          "$ref": "#/components/schemas/Id"
+        }
+      },
+      "OrderFilter": {
+        "name": "orderId",
+        "in": "query",
+        "schema": {
+          "$ref": "#/components/schemas/Id"
+        }
+      },
+      "BookSide": {
+        "name": "side",
+        "in": "query",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "BUY",
+            "SELL"
+          ]
+        },
+        "description": "Supply together with price for exact level volume."
+      },
+      "BookPrice": {
+        "name": "price",
+        "in": "query",
+        "schema": {
+          "$ref": "#/components/schemas/PositiveDecimalInput"
+        },
+        "description": "Supply together with side; exact price lookup, no tick rounding."
+      }
+    },
+    "schemas": {
+      "Id": {
+        "type": "string",
+        "format": "uuid"
+      },
+      "Decimal": {
+        "type": "string",
+        "pattern": "^(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+        "maxLength": 32,
+        "examples": [
+          "100.01",
+          "0",
+          "100.005"
+        ]
+      },
+      "PositiveDecimalInput": {
+        "type": "string",
+        "pattern": "^(?:1000000000(?:\\.0{1,6})?|(?:0|[1-9][0-9]{0,8})(?:\\.[0-9]{1,6})?)$",
+        "maxLength": 24,
+        "not": {
+          "pattern": "^0(?:\\.0+)?$"
+        },
+        "description": "Exact positive decimal string <=1000000000; at most 6 fractional digits; numeric JSON tokens are invalid.",
+        "examples": [
+          "100.01",
+          "0.01",
+          "0.05"
+        ]
+      },
+      "Timestamp": {
+        "type": "string",
+        "pattern": "^(?:0[1-9]|[12][0-9]|3[01])-(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)-[0-9]{4} (?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]\\.[0-9]{3}$",
+        "description": "Real valid calendar instant, English month abbreviations, UTC, dd-MMM-yyyy HH:mm:ss.SSS.",
+        "examples": [
+          "06-Nov-2026 14:07:03.009"
+        ]
+      },
+      "Quantity": {
+        "type": "integer",
+        "format": "int64",
+        "minimum": 1,
+        "maximum": 1000000000
+      },
+      "Version": {
+        "type": "integer",
+        "format": "int64",
+        "minimum": 1,
+        "maximum": 9223372036854775807
+      },
+      "Symbol": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 32,
+        "pattern": "^[A-Z0-9][A-Z0-9.-]*$",
+        "description": "Trim then uppercase with Locale.ROOT before validating/looking up; normalized symbol remains reserved after deletion."
+      },
+      "Username": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 64,
+        "pattern": "^[A-Za-z0-9._-]+$"
+      },
+      "Password": {
+        "type": "string",
+        "minLength": 16,
+        "maxLength": 64,
+        "pattern": "^[\\x20-\\x7E]+$",
+        "writeOnly": true,
+        "description": "ASCII secret; never returned or logged."
+      },
+      "Product": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "type": {
+            "const": "EQUITY",
+            "type": "string"
+          },
+          "symbol": {
+            "$ref": "#/components/schemas/Symbol"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "tickSize": {
+            "$ref": "#/components/schemas/Decimal"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "symbol",
+          "description",
+          "tickSize"
+        ],
+        "additionalProperties": false
+      },
+      "ProductCreate": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "EQUITY"
+            ]
+          },
+          "symbol": {
+            "$ref": "#/components/schemas/SymbolInput"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "tickSize": {
+            "$ref": "#/components/schemas/PositiveDecimalInput",
+            "default": "0.01"
+          }
+        },
+        "required": [
+          "type",
+          "symbol",
+          "description"
+        ],
+        "additionalProperties": false
+      },
+      "ProductPatch": {
+        "type": "object",
+        "properties": {
+          "symbol": {
+            "$ref": "#/components/schemas/SymbolInput"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "tickSize": {
+            "$ref": "#/components/schemas/PositiveDecimalInput"
+          }
+        },
+        "required": [],
+        "additionalProperties": false,
+        "minProperties": 1
+      },
+      "Participant": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "type": {
+            "type": "string",
+            "const": "BROKER"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "username": {
+            "$ref": "#/components/schemas/Username"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "name",
+          "username"
+        ],
+        "additionalProperties": false
+      },
+      "ParticipantCreate": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "BROKER"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "username": {
+            "$ref": "#/components/schemas/Username"
+          },
+          "password": {
+            "$ref": "#/components/schemas/Password"
+          }
+        },
+        "required": [
+          "type",
+          "name",
+          "username",
+          "password"
+        ],
+        "additionalProperties": false
+      },
+      "ParticipantPatch": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "password": {
+            "$ref": "#/components/schemas/Password"
+          }
+        },
+        "required": [],
+        "additionalProperties": false,
+        "minProperties": 1
+      },
+      "OrderSubmit": {
+        "type": "object",
+        "properties": {
+          "productId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "participantId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "side": {
+            "type": "string",
+            "enum": [
+              "BUY",
+              "SELL"
+            ]
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "LIMIT",
+              "MARKET"
+            ]
+          },
+          "quantity": {
+            "$ref": "#/components/schemas/Quantity"
+          },
+          "price": {
+            "$ref": "#/components/schemas/PositiveDecimalInput"
+          },
+          "longevity": {
+            "type": "string",
+            "enum": [
+              "DAY"
+            ],
+            "default": "DAY"
+          }
+        },
+        "required": [
+          "productId",
+          "side",
+          "type",
+          "quantity"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "LIMIT"
+                }
+              },
+              "required": [
+                "type"
+              ]
+            },
+            "then": {
+              "required": [
+                "price"
+              ]
+            },
+            "else": {
+              "not": {
+                "required": [
+                  "price"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "OrderPatch": {
+        "type": "object",
+        "properties": {
+          "expectedVersion": {
+            "$ref": "#/components/schemas/Version"
+          },
+          "price": {
+            "$ref": "#/components/schemas/PositiveDecimalInput"
+          },
+          "quantity": {
+            "$ref": "#/components/schemas/Quantity"
+          }
+        },
+        "required": [
+          "expectedVersion"
+        ],
+        "additionalProperties": false,
+        "anyOf": [
+          {
+            "required": [
+              "price"
+            ]
+          },
+          {
+            "required": [
+              "quantity"
+            ]
+          }
+        ]
+      },
+      "OrderReport": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "productId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "participantId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "side": {
+            "type": "string",
+            "enum": [
+              "BUY",
+              "SELL"
+            ]
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "LIMIT",
+              "MARKET"
+            ]
+          },
+          "longevity": {
+            "type": "string",
+            "const": "DAY"
+          },
+          "price": {
+            "$ref": "#/components/schemas/Decimal"
+          },
+          "entryTime": {
+            "$ref": "#/components/schemas/Timestamp"
+          },
+          "originalQuantity": {
+            "$ref": "#/components/schemas/Quantity"
+          },
+          "effectiveTotalQuantity": {
+            "$ref": "#/components/schemas/Quantity"
+          },
+          "tradedQuantity": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "maximum": 1000000000
+          },
+          "bookedQuantity": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "maximum": 1000000000
+          },
+          "removedQuantity": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "maximum": 1000000000
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "BOOKED",
+              "PARTIALLY_BOOKED_FILLED",
+              "FILLED",
+              "PARTIALLY_FILLED",
+              "NOT_FILLED",
+              "CANCELLED",
+              "PARTIALLY_CANCELLED"
+            ]
+          },
+          "removalReason": {
+            "type": "string",
+            "enum": [
+              "PARTICIPANT_CANCELLED",
+              "DAY_EXPIRED",
+              "MARKET_REMAINDER_DROPPED"
+            ]
+          },
+          "version": {
+            "$ref": "#/components/schemas/Version"
+          },
+          "tradeIds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Id"
+            },
+            "maxItems": 500,
+            "uniqueItems": true
+          },
+          "tradeIdsComplete": {
+            "type": "boolean"
+          },
+          "tradeCursor": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          }
+        },
+        "required": [
+          "id",
+          "productId",
+          "participantId",
+          "side",
+          "type",
+          "longevity",
+          "entryTime",
+          "originalQuantity",
+          "effectiveTotalQuantity",
+          "tradedQuantity",
+          "bookedQuantity",
+          "removedQuantity",
+          "status",
+          "version",
+          "tradeIds",
+          "tradeIdsComplete"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "LIMIT"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "price"
+              ]
+            },
+            "else": {
+              "not": {
+                "required": [
+                  "price"
+                ]
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "removedQuantity": {
+                  "minimum": 1
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "removalReason"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "tradeIdsComplete": {
+                  "const": false
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "tradeCursor"
+              ]
+            }
+          }
+        ]
+      },
+      "Trade": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "time": {
+            "$ref": "#/components/schemas/Timestamp"
+          },
+          "productId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "buyOrderId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "sellOrderId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "price": {
+            "$ref": "#/components/schemas/Decimal"
+          },
+          "quantity": {
+            "$ref": "#/components/schemas/Quantity"
+          }
+        },
+        "required": [
+          "id",
+          "time",
+          "productId",
+          "buyOrderId",
+          "sellOrderId",
+          "price",
+          "quantity"
+        ],
+        "additionalProperties": false
+      },
+      "PriceLevel": {
+        "type": "object",
+        "properties": {
+          "price": {
+            "$ref": "#/components/schemas/Decimal"
+          },
+          "quantity": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1,
+            "maximum": 10000000000000
+          }
+        },
+        "required": [
+          "price",
+          "quantity"
+        ],
+        "additionalProperties": false
+      },
+      "BookMetrics": {
+        "type": "object",
+        "properties": {
+          "bestBid": {
+            "$ref": "#/components/schemas/Decimal"
+          },
+          "worstBid": {
+            "$ref": "#/components/schemas/Decimal"
+          },
+          "bestOffer": {
+            "$ref": "#/components/schemas/Decimal"
+          },
+          "worstOffer": {
+            "$ref": "#/components/schemas/Decimal"
+          },
+          "spread": {
+            "$ref": "#/components/schemas/Decimal"
+          },
+          "midpoint": {
+            "$ref": "#/components/schemas/Decimal"
+          },
+          "bidVolume": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "maximum": 10000000000000
+          },
+          "offerVolume": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "maximum": 10000000000000
+          }
+        },
+        "required": [
+          "bidVolume",
+          "offerVolume"
+        ],
+        "additionalProperties": false
+      },
+      "LevelVolume": {
+        "type": "object",
+        "properties": {
+          "side": {
+            "type": "string",
+            "enum": [
+              "BUY",
+              "SELL"
+            ]
+          },
+          "price": {
+            "$ref": "#/components/schemas/Decimal"
+          },
+          "quantity": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "maximum": 10000000000000
+          }
+        },
+        "required": [
+          "side",
+          "price",
+          "quantity"
+        ],
+        "additionalProperties": false
+      },
+      "OrderBook": {
+        "type": "object",
+        "properties": {
+          "productId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "symbol": {
+            "$ref": "#/components/schemas/Symbol"
+          },
+          "revision": {
+            "$ref": "#/components/schemas/Version"
+          },
+          "bids": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PriceLevel"
+            },
+            "maxItems": 500
+          },
+          "offers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PriceLevel"
+            },
+            "maxItems": 500
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/BookMetrics"
+          },
+          "levelVolume": {
+            "$ref": "#/components/schemas/LevelVolume"
+          },
+          "nextCursor": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          }
+        },
+        "required": [
+          "productId",
+          "symbol",
+          "revision",
+          "bids",
+          "offers",
+          "metrics"
+        ],
+        "additionalProperties": false
+      },
+      "Running": {
+        "type": "object",
+        "properties": {
+          "running": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "running"
+        ],
+        "additionalProperties": false
+      },
+      "Deleted": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "ProductPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Product"
+            },
+            "maxItems": 500
+          },
+          "nextCursor": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false
+      },
+      "ParticipantPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Participant"
+            },
+            "maxItems": 500
+          },
+          "nextCursor": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false
+      },
+      "TradePage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Trade"
+            },
+            "maxItems": 500
+          },
+          "nextCursor": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false
+      },
+      "FailureData": {
+        "type": "object",
+        "properties": {
+          "reasonCode": {
+            "type": "string",
+            "enum": [
+              "BOOK_CURSOR_STALE",
+              "COMMAND_IN_PROGRESS",
+              "FORBIDDEN",
+              "IDEMPOTENCY_CONFLICT",
+              "IDEMPOTENCY_REQUIRED",
+              "INTERNAL_ERROR",
+              "INVALID_AMENDMENT",
+              "INVALID_LIMIT_PRICE",
+              "INVALID_ORDER_VERSION",
+              "INVALID_PARTICIPANT",
+              "INVALID_PRODUCT",
+              "INVALID_QUANTITY",
+              "MALFORMED_REQUEST",
+              "MARKET_PRICE_NOT_ALLOWED",
+              "METHOD_NOT_ALLOWED",
+              "MISSING_LIMIT_PRICE",
+              "MISSING_ORDER_SIDE",
+              "MISSING_ORDER_TYPE",
+              "MISSING_ORDER_VERSION",
+              "ORDER_ALREADY_CANCELLED",
+              "ORDER_ALREADY_FILLED",
+              "ORDER_NOT_AMENDABLE",
+              "ORDER_NOT_FOUND",
+              "ORDER_NOT_ON_BOOK",
+              "ORDER_VERSION_CONFLICT",
+              "PARTICIPANT_IN_USE",
+              "PARTICIPANT_NOT_FOUND",
+              "PRODUCT_IN_USE",
+              "PRODUCT_NOT_FOUND",
+              "PRODUCT_SYMBOL_EXISTS",
+              "RATE_LIMITED",
+              "REQUEST_LIMIT_EXCEEDED",
+              "REQUEST_TOO_LARGE",
+              "ROUTE_NOT_FOUND",
+              "SERVICE_OVERLOADED",
+              "STORAGE_UNAVAILABLE",
+              "TRADE_NOT_FOUND",
+              "UNAUTHENTICATED",
+              "UNSUPPORTED_LONGEVITY",
+              "UNSUPPORTED_MEDIA_TYPE",
+              "UNSUPPORTED_ORDER_SIDE",
+              "UNSUPPORTED_ORDER_TYPE",
+              "UNSUPPORTED_PARTICIPANT_TYPE",
+              "UNSUPPORTED_PRODUCT_TYPE",
+              "USERNAME_EXISTS"
+            ]
+          }
+        },
+        "required": [
+          "reasonCode"
+        ],
+        "additionalProperties": false
+      },
+      "ProductCreated": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "responseCode": {
+            "type": "integer",
+            "enum": [
+              1001
+            ]
+          },
+          "infoMessage": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 512
+          },
+          "warningMessage": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 1024
+          },
+          "errorMessage": {
+            "type": "string",
+            "const": ""
+          },
+          "data": {
+            "$ref": "#/components/schemas/Product"
+          }
+        },
+        "required": [
+          "success",
+          "responseCode",
+          "infoMessage",
+          "warningMessage",
+          "errorMessage",
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "ProductFound": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "responseCode": {
+            "type": "integer",
+            "enum": [
+              1003
+            ]
+          },
+          "infoMessage": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 512
+          },
+          "warningMessage": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 1024
+          },
+          "errorMessage": {
+            "type": "string",
+            "const": ""
+          },
+          "data": {
+            "$ref": "#/components/schemas/Product"
+          }
+        },
+        "required": [
+          "success",
+          "responseCode",
+          "infoMessage",
+          "warningMessage",
+          "errorMessage",
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "ProductsFound": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "responseCode": {
+            "type": "integer",
+            "enum": [
+              1003
+            ]
+          },
+          "infoMessage": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 512
+          },
+          "warningMessage": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 1024
+          },
+          "errorMessage": {
+            "type": "string",
+            "const": ""
+          },
+          "data": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Product"
+              },
+              {
+                "$ref": "#/components/schemas/ProductPage"
+              }
+            ]
+          }
+        },
+        "required": [
+          "success",
+          "responseCode",
+          "infoMessage",
+          "warningMessage",
+          "errorMessage",
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "ProductUpdated": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "responseCode": {
+            "type": "integer",
+            "enum": [
+              1005
+            ]
+          },
+          "infoMessage": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 512
+          },
+          "warningMessage": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 1024
+          },
+          "errorMessage": {
+            "type": "string",
+            "const": ""
+          },
+          "data": {
+            "$ref": "#/components/schemas/Product"
+          }
+        },
+        "required": [
+          "success",
+          "responseCode",
+          "infoMessage",
+          "warningMessage",
+          "errorMessage",
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "ProductDeleted": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "responseCode": {
+            "type": "integer",
+            "enum": [
+              1006
+            ]
+          },
+          "infoMessage": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 512
+          },
+          "warningMessage": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 1024
+          },
+          "errorMessage": {
+            "type": "string",
+            "const": ""
+          },
+          "data": {
+            "$ref": "#/components/schemas/Deleted"
+          }
+        },
+        "required": [
+          "success",
+          "responseCode",
+          "infoMessage",
+          "warningMessage",
+          "errorMessage",
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "ParticipantCreated": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "responseCode": {
+            "type": "integer",
+            "enum": [
+              1007
+            ]
+          },
+          "infoMessage": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 512
+          },
+          "warningMessage": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 1024
+          },
+          "errorMessage": {
+            "type": "string",
+            "const": ""
+          },
+          "data": {
+            "$ref": "#/components/schemas/Participant"
+          }
+        },
+        "required": [
+          "success",
+          "responseCode",
+          "infoMessage",
+          "warningMessage",
+          "errorMessage",
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "ParticipantFound": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "responseCode": {
+            "type": "integer",
+            "enum": [
+              1009
+            ]
+          },
+          "infoMessage": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 512
+          },
+          "warningMessage": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 1024
+          },
+          "errorMessage": {
+            "type": "string",
+            "const": ""
+          },
+          "data": {
+            "$ref": "#/components/schemas/Participant"
+          }
+        },
+        "required": [
+          "success",
+          "responseCode",
+          "infoMessage",
+          "warningMessage",
+          "errorMessage",
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "ParticipantsFound": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "responseCode": {
+            "type": "integer",
+            "enum": [
+              1009
+            ]
+          },
+          "infoMessage": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 512
+          },
+          "warningMessage": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 1024
+          },
+          "errorMessage": {
+            "type": "string",
+            "const": ""
+          },
+          "data": {
+            "$ref": "#/components/schemas/ParticipantPage"
+          }
+        },
+        "required": [
+          "success",
+          "responseCode",
+          "infoMessage",
+          "warningMessage",
+          "errorMessage",
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "ParticipantUpdated": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "responseCode": {
+            "type": "integer",
+            "enum": [
+              1011
+            ]
+          },
+          "infoMessage": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 512
+          },
+          "warningMessage": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 1024
+          },
+          "errorMessage": {
+            "type": "string",
+            "const": ""
+          },
+          "data": {
+            "$ref": "#/components/schemas/Participant"
+          }
+        },
+        "required": [
+          "success",
+          "responseCode",
+          "infoMessage",
+          "warningMessage",
+          "errorMessage",
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "ParticipantDeleted": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "responseCode": {
+            "type": "integer",
+            "enum": [
+              1012
+            ]
+          },
+          "infoMessage": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 512
+          },
+          "warningMessage": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 1024
+          },
+          "errorMessage": {
+            "type": "string",
+            "const": ""
+          },
+          "data": {
+            "$ref": "#/components/schemas/Deleted"
+          }
+        },
+        "required": [
+          "success",
+          "responseCode",
+          "infoMessage",
+          "warningMessage",
+          "errorMessage",
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "OrderAccepted": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "responseCode": {
+            "type": "integer",
+            "enum": [
+              1013,
+              1018
+            ]
+          },
+          "infoMessage": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 512
+          },
+          "warningMessage": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 1024
+          },
+          "errorMessage": {
+            "type": "string",
+            "const": ""
+          },
+          "data": {
+            "$ref": "#/components/schemas/OrderReport"
+          }
+        },
+        "required": [
+          "success",
+          "responseCode",
+          "infoMessage",
+          "warningMessage",
+          "errorMessage",
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "OrderFound": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "responseCode": {
+            "type": "integer",
+            "enum": [
+              1015
+            ]
+          },
+          "infoMessage": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 512
+          },
+          "warningMessage": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 1024
+          },
+          "errorMessage": {
+            "type": "string",
+            "const": ""
+          },
+          "data": {
+            "$ref": "#/components/schemas/OrderReport"
+          }
+        },
+        "required": [
+          "success",
+          "responseCode",
+          "infoMessage",
+          "warningMessage",
+          "errorMessage",
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "OrderUpdated": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "responseCode": {
+            "type": "integer",
+            "enum": [
+              1019,
+              1018
+            ]
+          },
+          "infoMessage": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 512
+          },
+          "warningMessage": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 1024
+          },
+          "errorMessage": {
+            "type": "string",
+            "const": ""
+          },
+          "data": {
+            "$ref": "#/components/schemas/OrderReport"
+          }
+        },
+        "required": [
+          "success",
+          "responseCode",
+          "infoMessage",
+          "warningMessage",
+          "errorMessage",
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "OrderCancelled": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "responseCode": {
+            "type": "integer",
+            "enum": [
+              1017
+            ]
+          },
+          "infoMessage": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 512
+          },
+          "warningMessage": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 1024
+          },
+          "errorMessage": {
+            "type": "string",
+            "const": ""
+          },
+          "data": {
+            "$ref": "#/components/schemas/OrderReport"
+          }
+        },
+        "required": [
+          "success",
+          "responseCode",
+          "infoMessage",
+          "warningMessage",
+          "errorMessage",
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "BookFound": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "responseCode": {
+            "type": "integer",
+            "enum": [
+              1020
+            ]
+          },
+          "infoMessage": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 512
+          },
+          "warningMessage": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 1024
+          },
+          "errorMessage": {
+            "type": "string",
+            "const": ""
+          },
+          "data": {
+            "$ref": "#/components/schemas/OrderBook"
+          }
+        },
+        "required": [
+          "success",
+          "responseCode",
+          "infoMessage",
+          "warningMessage",
+          "errorMessage",
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "TradeFound": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "responseCode": {
+            "type": "integer",
+            "enum": [
+              0
+            ]
+          },
+          "infoMessage": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 512
+          },
+          "warningMessage": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 1024
+          },
+          "errorMessage": {
+            "type": "string",
+            "const": ""
+          },
+          "data": {
+            "$ref": "#/components/schemas/Trade"
+          }
+        },
+        "required": [
+          "success",
+          "responseCode",
+          "infoMessage",
+          "warningMessage",
+          "errorMessage",
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "TradesFound": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "responseCode": {
+            "type": "integer",
+            "enum": [
+              0
+            ]
+          },
+          "infoMessage": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 512
+          },
+          "warningMessage": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 1024
+          },
+          "errorMessage": {
+            "type": "string",
+            "const": ""
+          },
+          "data": {
+            "$ref": "#/components/schemas/TradePage"
+          }
+        },
+        "required": [
+          "success",
+          "responseCode",
+          "infoMessage",
+          "warningMessage",
+          "errorMessage",
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "StatusFound": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "responseCode": {
+            "type": "integer",
+            "enum": [
+              0
+            ]
+          },
+          "infoMessage": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 512
+          },
+          "warningMessage": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 1024
+          },
+          "errorMessage": {
+            "type": "string",
+            "const": ""
+          },
+          "data": {
+            "$ref": "#/components/schemas/Running"
+          }
+        },
+        "required": [
+          "success",
+          "responseCode",
+          "infoMessage",
+          "warningMessage",
+          "errorMessage",
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "Failure": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/ApplicationFailure"
+          },
+          {
+            "$ref": "#/components/schemas/TechnicalFailure"
+          }
+        ]
+      },
+      "SymbolInput": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 96,
+        "pattern": "^\\s*[A-Za-z0-9][A-Za-z0-9.-]{0,31}\\s*$",
+        "description": "Trim and uppercase before normalized-symbol validation/duplicate lookup; normalized length1-32."
+      },
+      "ApplicationFailureData": {
+        "type": "object",
+        "properties": {
+          "reasonCode": {
+            "type": "string",
+            "enum": [
+              "BOOK_CURSOR_STALE",
+              "IDEMPOTENCY_CONFLICT",
+              "IDEMPOTENCY_REQUIRED",
+              "INVALID_AMENDMENT",
+              "INVALID_LIMIT_PRICE",
+              "INVALID_ORDER_VERSION",
+              "INVALID_PARTICIPANT",
+              "INVALID_PRODUCT",
+              "INVALID_QUANTITY",
+              "MARKET_PRICE_NOT_ALLOWED",
+              "MISSING_LIMIT_PRICE",
+              "MISSING_ORDER_SIDE",
+              "MISSING_ORDER_TYPE",
+              "MISSING_ORDER_VERSION",
+              "ORDER_ALREADY_CANCELLED",
+              "ORDER_ALREADY_FILLED",
+              "ORDER_NOT_AMENDABLE",
+              "ORDER_NOT_FOUND",
+              "ORDER_NOT_ON_BOOK",
+              "ORDER_VERSION_CONFLICT",
+              "PARTICIPANT_IN_USE",
+              "PARTICIPANT_NOT_FOUND",
+              "PRODUCT_IN_USE",
+              "PRODUCT_NOT_FOUND",
+              "PRODUCT_SYMBOL_EXISTS",
+              "REQUEST_LIMIT_EXCEEDED",
+              "TRADE_NOT_FOUND",
+              "UNSUPPORTED_LONGEVITY",
+              "UNSUPPORTED_ORDER_SIDE",
+              "UNSUPPORTED_ORDER_TYPE",
+              "UNSUPPORTED_PARTICIPANT_TYPE",
+              "UNSUPPORTED_PRODUCT_TYPE",
+              "USERNAME_EXISTS"
+            ]
+          }
+        },
+        "required": [
+          "reasonCode"
+        ],
+        "additionalProperties": false
+      },
+      "TechnicalFailureData": {
+        "type": "object",
+        "properties": {
+          "reasonCode": {
+            "type": "string",
+            "enum": [
+              "COMMAND_IN_PROGRESS",
+              "FORBIDDEN",
+              "INTERNAL_ERROR",
+              "MALFORMED_REQUEST",
+              "METHOD_NOT_ALLOWED",
+              "RATE_LIMITED",
+              "REQUEST_TOO_LARGE",
+              "ROUTE_NOT_FOUND",
+              "SERVICE_OVERLOADED",
+              "STORAGE_UNAVAILABLE",
+              "UNAUTHENTICATED",
+              "UNSUPPORTED_MEDIA_TYPE"
+            ]
+          }
+        },
+        "required": [
+          "reasonCode"
+        ],
+        "additionalProperties": false
+      },
+      "ApplicationFailure": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": false
+          },
+          "responseCode": {
+            "type": "integer",
+            "enum": [
+              1002,
+              1004,
+              1008,
+              1010,
+              1014,
+              1016,
+              1018,
+              9000,
+              999999
+            ]
+          },
+          "infoMessage": {
+            "type": "string",
+            "const": ""
+          },
+          "warningMessage": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 1024
+          },
+          "errorMessage": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "data": {
+            "$ref": "#/components/schemas/ApplicationFailureData"
+          }
+        },
+        "required": [
+          "success",
+          "responseCode",
+          "infoMessage",
+          "warningMessage",
+          "errorMessage",
+          "data"
+        ],
+        "additionalProperties": false,
+        "description": "HTTP200 handled business rejection with success=false."
+      },
+      "TechnicalFailure": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": false
+          },
+          "responseCode": {
+            "type": "integer",
+            "const": 999999
+          },
+          "infoMessage": {
+            "type": "string",
+            "const": ""
+          },
+          "warningMessage": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 1024
+          },
+          "errorMessage": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "data": {
+            "$ref": "#/components/schemas/TechnicalFailureData"
+          }
+        },
+        "required": [
+          "success",
+          "responseCode",
+          "infoMessage",
+          "warningMessage",
+          "errorMessage",
+          "data"
+        ],
+        "additionalProperties": false,
+        "description": "Request/security/admission/execution failure carried by its documented HTTP4xx/5xx status."
+      }
+    },
+    "examples": {
+      "productCreated": {
+        "summary": "Product-specific add outcome",
+        "value": {
+          "success": true,
+          "responseCode": 1001,
+          "infoMessage": "Product added.",
+          "warningMessage": "",
+          "errorMessage": "",
+          "data": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "type": "EQUITY",
+            "symbol": "ABC",
+            "description": "Synthetic Equity",
+            "tickSize": "0.01"
+          }
+        }
+      },
+      "staleAmendment": {
+        "summary": "HTTP200 business rejection with numeric code1014 and ORDER_VERSION_CONFLICT.",
+        "value": {
+          "success": false,
+          "responseCode": 1014,
+          "infoMessage": "",
+          "warningMessage": "",
+          "errorMessage": "Order version changed.",
+          "data": {
+            "reasonCode": "ORDER_VERSION_CONFLICT"
+          }
+        }
+      },
+      "unexpectedFailure": {
+        "summary": "No internal diagnostics in client payload",
+        "value": {
+          "success": false,
+          "responseCode": 999999,
+          "infoMessage": "",
+          "warningMessage": "",
+          "errorMessage": "An unexpected error occurred.",
+          "data": {
+            "reasonCode": "INTERNAL_ERROR"
+          }
+        }
+      },
+      "status": {
+        "value": {
+          "success": true,
+          "responseCode": 0,
+          "infoMessage": "Service running.",
+          "warningMessage": "",
+          "errorMessage": "",
+          "data": {
+            "running": true
+          }
+        }
+      },
+      "entityNotFound": {
+        "summary": "HTTP200 business entity miss on a known route.",
+        "value": {
+          "success": false,
+          "responseCode": 1004,
+          "infoMessage": "",
+          "warningMessage": "",
+          "errorMessage": "Product not found.",
+          "data": {
+            "reasonCode": "PRODUCT_NOT_FOUND"
+          }
+        }
+      }
+    },
+    "responses": {
+      "Http400": {
+        "description": "HTTP 400 request/security/execution failure; business rejections instead use HTTP200.",
+        "headers": {
+          "X-Correlation-ID": {
+            "description": "Generated per HTTP response, including replay.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "Cache-Control": {
+            "description": "No API outcome may be cached, including a business rejection carried by HTTP200.",
+            "schema": {
+              "type": "string",
+              "const": "no-store"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/TechnicalFailure"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "properties": {
+                        "reasonCode": {
+                          "enum": [
+                            "MALFORMED_REQUEST"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "Http401": {
+        "description": "HTTP 401 request/security/execution failure; business rejections instead use HTTP200.",
+        "headers": {
+          "X-Correlation-ID": {
+            "description": "Generated per HTTP response, including replay.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "WWW-Authenticate": {
+            "schema": {
+              "type": "string"
+            },
+            "description": "HTTP Basic challenge."
+          },
+          "Cache-Control": {
+            "description": "No API outcome may be cached, including a business rejection carried by HTTP200.",
+            "schema": {
+              "type": "string",
+              "const": "no-store"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/TechnicalFailure"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "properties": {
+                        "reasonCode": {
+                          "enum": [
+                            "UNAUTHENTICATED"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "Http403": {
+        "description": "HTTP 403 request/security/execution failure; business rejections instead use HTTP200.",
+        "headers": {
+          "X-Correlation-ID": {
+            "description": "Generated per HTTP response, including replay.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "Cache-Control": {
+            "description": "No API outcome may be cached, including a business rejection carried by HTTP200.",
+            "schema": {
+              "type": "string",
+              "const": "no-store"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/TechnicalFailure"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "properties": {
+                        "reasonCode": {
+                          "enum": [
+                            "FORBIDDEN"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "Http404": {
+        "description": "HTTP 404 request/security/execution failure; business rejections instead use HTTP200.",
+        "headers": {
+          "X-Correlation-ID": {
+            "description": "Generated per HTTP response, including replay.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "Cache-Control": {
+            "description": "No API outcome may be cached, including a business rejection carried by HTTP200.",
+            "schema": {
+              "type": "string",
+              "const": "no-store"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/TechnicalFailure"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "properties": {
+                        "reasonCode": {
+                          "enum": [
+                            "ROUTE_NOT_FOUND"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "Http405": {
+        "description": "HTTP 405 request/security/execution failure; business rejections instead use HTTP200.",
+        "headers": {
+          "X-Correlation-ID": {
+            "description": "Generated per HTTP response, including replay.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "Cache-Control": {
+            "description": "No API outcome may be cached, including a business rejection carried by HTTP200.",
+            "schema": {
+              "type": "string",
+              "const": "no-store"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/TechnicalFailure"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "properties": {
+                        "reasonCode": {
+                          "enum": [
+                            "METHOD_NOT_ALLOWED"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "Http413": {
+        "description": "HTTP 413 request/security/execution failure; business rejections instead use HTTP200.",
+        "headers": {
+          "X-Correlation-ID": {
+            "description": "Generated per HTTP response, including replay.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "Cache-Control": {
+            "description": "No API outcome may be cached, including a business rejection carried by HTTP200.",
+            "schema": {
+              "type": "string",
+              "const": "no-store"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/TechnicalFailure"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "properties": {
+                        "reasonCode": {
+                          "enum": [
+                            "REQUEST_TOO_LARGE"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "Http415": {
+        "description": "HTTP 415 request/security/execution failure; business rejections instead use HTTP200.",
+        "headers": {
+          "X-Correlation-ID": {
+            "description": "Generated per HTTP response, including replay.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "Cache-Control": {
+            "description": "No API outcome may be cached, including a business rejection carried by HTTP200.",
+            "schema": {
+              "type": "string",
+              "const": "no-store"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/TechnicalFailure"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "properties": {
+                        "reasonCode": {
+                          "enum": [
+                            "UNSUPPORTED_MEDIA_TYPE"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "Http429": {
+        "description": "HTTP 429 request/security/execution failure; business rejections instead use HTTP200.",
+        "headers": {
+          "X-Correlation-ID": {
+            "description": "Generated per HTTP response, including replay.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "Retry-After": {
+            "schema": {
+              "type": "string",
+              "const": "1"
+            }
+          },
+          "Cache-Control": {
+            "description": "No API outcome may be cached, including a business rejection carried by HTTP200.",
+            "schema": {
+              "type": "string",
+              "const": "no-store"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/TechnicalFailure"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "properties": {
+                        "reasonCode": {
+                          "enum": [
+                            "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "Http500": {
+        "description": "HTTP 500 request/security/execution failure; business rejections instead use HTTP200.",
+        "headers": {
+          "X-Correlation-ID": {
+            "description": "Generated per HTTP response, including replay.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "Cache-Control": {
+            "description": "No API outcome may be cached, including a business rejection carried by HTTP200.",
+            "schema": {
+              "type": "string",
+              "const": "no-store"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/TechnicalFailure"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "properties": {
+                        "reasonCode": {
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    },
+                    "errorMessage": {
+                      "type": "string",
+                      "const": "An unexpected error occurred."
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "Http503": {
+        "description": "HTTP 503 request/security/execution failure; business rejections instead use HTTP200.",
+        "headers": {
+          "X-Correlation-ID": {
+            "description": "Generated per HTTP response, including replay.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "Retry-After": {
+            "schema": {
+              "type": "string",
+              "const": "1"
+            }
+          },
+          "Cache-Control": {
+            "description": "No API outcome may be cached, including a business rejection carried by HTTP200.",
+            "schema": {
+              "type": "string",
+              "const": "no-store"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/TechnicalFailure"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "properties": {
+                        "reasonCode": {
+                          "enum": [
+                            "SERVICE_OVERLOADED",
+                            "STORAGE_UNAVAILABLE",
+                            "COMMAND_IN_PROGRESS"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "Http431": {
+        "description": "HTTP 431 request/security/execution failure; business rejections instead use HTTP200.",
+        "headers": {
+          "X-Correlation-ID": {
+            "description": "Generated per HTTP response, including replay.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "Cache-Control": {
+            "description": "No API outcome may be cached, including a business rejection carried by HTTP200.",
+            "schema": {
+              "type": "string",
+              "const": "no-store"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/TechnicalFailure"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "properties": {
+                        "reasonCode": {
+                          "enum": [
+                            "REQUEST_TOO_LARGE"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-resource-limits": {
+    "requestBytes": 16384,
+    "listDefault": 100,
+    "listMaximum": 500,
+    "matchesPerCommand": 2000,
+    "lockWaitMilliseconds": 250,
+    "idempotencyRetentionHours": 24
+  },
+  "x-contract-companion": "api.md",
+  "x-business-failure-http-status": 200,
+  "x-client-result-fields": [
+    "success",
+    "responseCode",
+    "data.reasonCode"
+  ]
+}

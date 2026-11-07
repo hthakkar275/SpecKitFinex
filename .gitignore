@@ -1,0 +1,19 @@
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+.aws/
+.codex/
+*.pem
+*.key
+
+# Java build output and local editor state
+target/
+out/
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# Generated Spec Kit template cache
+.specify/memory/.constitution-template.json
