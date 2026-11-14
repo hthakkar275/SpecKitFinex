@@ -1,7 +1,7 @@
 # Implementation Plan: Electronic Financial Exchange Simulator
 
 **Branch**: `001-exchange-simulator` (Spec Kit logical feature identifier; no Git repository or
-branch was created) | **Date**: 2026-11-07 | **Spec**: [spec.md](spec.md)
+branch was created) | **Date**: 2026-11-08 | **Spec**: [spec.md](spec.md)
 
 **Input**: `specs/001-exchange-simulator/spec.md`; user-selected Spring Boot 4.1.0, JDK 21,
 and in-memory persistence. This command ends at design; it does not implement the application.
@@ -17,7 +17,7 @@ rules. Product-scoped transactions stage touched changes and roll back recoverab
 books, both order sides, trades, audit, indexes, and idempotent results commit together.
 
 See [research](research.md), [data model](data-model.md), [HTTP contract](contracts/api.md),
-[machine-readable OpenAPI](contracts/openapi.json), and [validation guide](quickstart.md).
+[machine-readable OpenAPI](contracts/openapi.json), [requirements traceability](requirements-traceability.md), and [validation guide](quickstart.md).
 
 ## Technical Context
 
@@ -72,8 +72,8 @@ all five are covered by the concrete design below; execution evidence remains a 
 | V. Verification/audit | PASS | Audit and idempotency outcome in the commit journal; correlated metrics/logs and permission tests; explicit restart-loss limitation. |
 
 Security/scope check: synthetic assets only, authenticated role/owner checks, TLS off loopback,
-redacted secrets, restricted management interface. Workflow check: every FR-001–FR-044 has design
-and validation coverage below. No constitutional exception is requested. A failed future
+redacted secrets, restricted management interface. Workflow check: every atomic child under groups FR-001–FR-044 has design
+and validation coverage below and in the requirements traceability matrix. No constitutional exception is requested. A failed future
 correctness, contract, or performance check blocks release rather than being relabeled as passed.
 
 ## Project Structure
@@ -86,6 +86,7 @@ specs/001-exchange-simulator/
 ├── plan.md
 ├── research.md
 ├── data-model.md
+├── requirements-traceability.md
 ├── quickstart.md
 ├── checklists/requirements.md
 └── contracts/
@@ -168,7 +169,12 @@ No separate microservices, generic repository framework, or speculative persiste
 
 ## Verification and Requirement Coverage
 
-| Requirements | Design location | Acceptance evidence |
+The ranges below name stable topic groups. Implementation tasks and pass/fail results cite their
+individual atomic children. [requirements-traceability.md](requirements-traceability.md) lists the
+exact child ranges and maps them to unchanged user stories, scenarios, and success criteria.
+No API behavior or verification workload changed during the requirement decomposition.
+
+| Requirement groups (all atomic children) | Design location | Acceptance evidence |
 | --- | --- | --- |
 | FR-001–008 | HTTP access rules, identity/reference model | Administrator lifecycle, duplicate symbols, deletion races, role/ownership denial. |
 | FR-009–017 | Pure matching and atomic book delta | Exact ticks, resting-price fills, priority ties, invalid-order absence, limit/market residuals. |

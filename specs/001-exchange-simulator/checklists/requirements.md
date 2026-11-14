@@ -18,6 +18,8 @@
 
 - [x] No unresolved clarification markers remain
 - [x] Requirements are testable and unambiguous
+- [x] Each mandatory FR child expresses one independently verifiable obligation
+- [x] Every FR child is covered by the story/verification traceability mapping
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
 - [x] All acceptance scenarios are defined
@@ -34,23 +36,23 @@
 
 ## Notes
 
-- Review refreshed 2026-11-07 after the HTTP business-result amendment: all 16 criteria satisfied after resolving
+- Review refreshed 2026-11-08 after atomic FR restructuring: all 18 criteria satisfied after resolving
   the consistency findings below. This confirms requirements readiness; no application or
   performance tests ran. The existing feature directory and feature pointer are retained.
 - Resource paths, JSON fields, HTTP statuses, timestamps, and result codes are user-requested
   product contracts. No technology stack, concrete storage design, synchronization mechanism,
   or code structure is prescribed.
-- Acceptance coverage: Story 1 covers FR-001–FR-008; Stories 2, 4, and 5 cover FR-009–FR-027;
-  Story 7 covers FR-028; Story 3 and SC-005–SC-010 cover FR-029–FR-037. Story 6 and SC-011/SC-012
-  cover FR-038–FR-044, including all numeric codes and bodyless/headerless reads. Edge cases
-  and the resource, envelope, status, result-code, and failure tables supplement the scenarios.
-- Consistency finding resolved: "Original quantity MUST remain the submitted quantity" (FR-019)
-  now pairs with effective-total and removed quantities and the reconciliation rule in FR-023.
+- Acceptance coverage is recorded in [requirements-traceability.md](../requirements-traceability.md).
+  FR-001–FR-044 are topic groups; their decimal-suffixed children are the verification units.
+  The original user stories, priorities, acceptance scenarios, independent tests, and edge cases
+  were preserved byte-for-byte. Shared interface/error policies remain canonical references.
+- Consistency finding resolved: "An order's original quantity MUST remain equal to its submitted quantity" (FR-019.1)
+  now pairs with effective-total and removed quantities and the reconciliation rule in FR-023.20.
 - Consistency finding resolved: "Replay of an already completed command returns its original
   outcome" (Failure Outcomes) distinguishes a retried successful cancellation from a new attempt
   that returns `ORDER_ALREADY_CANCELLED`.
 - Consistency finding resolved: numeric `responseCode` now follows the supplied catalog, while
-  "symbolic failure names elsewhere in this specification are reason codes" (FR-029) preserves
+  "Every failed outcome MUST include its specific symbolic `data.reasonCode`" (FR-029.3) preserves
   precise failures in `data.reasonCode` without replacing or reassigning numeric codes.
 - The user confirmed code 0 for successful status and separate trade reads, and 999999 with a
   specific reason for otherwise unmapped failures. The full supplied catalog remains intact.
@@ -63,6 +65,8 @@
 - Constitution 2.0.0 and the specification/contracts now require HTTP 200 with `success=false`
   for business rejections; request/security/system failures retain 4xx/5xx. Existing result and
   reason codes remain stable. HTTP-only success counts are excluded from useful throughput.
+- Singularity review covers all atomic child statements. The two retained MAY permissions remain
+  optional; they were not silently strengthened. Each mandatory child has one modal obligation.
 - No unresolved quality findings or blocking clarification markers remain. The next phase is
-  `$speckit-plan`; `$speckit-clarify` can be used to revise the documented business assumptions.
+  `$speckit-tasks`; the existing plan remains valid after its traceability references were updated.
 - Items marked incomplete require specification updates before proceeding to planning.

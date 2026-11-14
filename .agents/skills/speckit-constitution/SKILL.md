@@ -107,6 +107,20 @@ Follow this execution flow:
    - Preserve heading hierarchy and comments can be removed once replaced unless they still add clarifying guidance.
    - Ensure each Principle section: succinct name line, paragraph (or bullet list) capturing non‑negotiable rules, explicit rationale if not obvious.
    - Ensure Governance section lists amendment procedure, versioning policy, and compliance review expectations.
+   - Include a requirements-quality criterion in the constitution's development workflow or quality
+     gates section, using the equivalent section in the resolved template. Establish these rules:
+     - Each normative requirement MUST express one independently verifiable obligation.
+     - Each requirement MUST have a unique, stable identifier.
+     - Rationale and examples MUST be separate from normative requirement statements.
+     - Each requirement MUST be traceable to a user need, user story, or governing constraint.
+     - Structural rewrites MUST preserve approved behavior unless a behavioral change is explicitly
+       authorized.
+     - Restructuring requirements alone MUST preserve user stories.
+     - Restructuring requirements alone MUST preserve acceptance scenarios.
+     - Traceability references MUST be updated when requirement identifiers change.
+   - Keep this criterion at the governance level. Leave exact numbering schemes, document layouts,
+     and traceability-table formats to templates or writing guides. Assess singularity by the
+     obligation being verified, rather than sentence length or the number of modal verbs.
 
 4. Produce a Sync Impact Report as an HTML comment at the top of the constitution file after update.
    This report is temporary scratch material for human review of the amendment, not governance
@@ -122,6 +136,9 @@ Follow this execution flow:
    - Version line matches report.
    - Dates ISO format YYYY-MM-DD.
    - Principles are declarative, testable, and free of vague language ("should" → replace with MUST/SHOULD rationale where appropriate).
+   - Confirm the requirements-quality criterion covers singularity, independent verification,
+     stable identifiers, separated rationale/examples, traceability, and behavior preservation.
+   - Confirm the criterion does not prescribe a particular numbering scheme or document layout.
 
 6. Write the completed constitution back to `.specify/memory/constitution.md` (overwrite).
 

@@ -6,7 +6,7 @@
 
 **Created**: 2026-11-06
 
-**Last Updated**: 2026-11-07
+**Last Updated**: 2026-11-08
 
 **Status**: Draft
 
@@ -288,184 +288,705 @@ An operator or client checks whether the service process is running.
 
 ### Functional Requirements
 
-- **FR-001**: The service MUST provide distinct internal administrator and external participant
-  HTTP REST interfaces and the liveness endpoint. There is no user interface in this feature.
-- **FR-002**: Every operation except liveness MUST authenticate its caller and enforce its role.
-  Participants MUST be forbidden from all internal operations. Administrator authority alone
-  MUST NOT grant Broker order-entry rights.
-- **FR-003**: A participant identity MUST be bound to one active Broker. Submission, amendment,
-  cancellation, and private reports MUST use that identity, never trust an arbitrary supplied
-  participant ID, and MUST reject attempts to act for another Broker.
-- **FR-004**: Participants MUST access only their own order reports and trades involving one of
-  their orders. Active product lookup and aggregated books MUST be available to every active
-  participant; participant administration and participant lists remain internal.
-- **FR-005**: Administrators MUST create, retrieve by ID, list, update, and delete products.
-  Products MUST have a generated immutable ID, a required unique normalized symbol, a nonempty
-  description, type Equity, and a positive tick size defaulting to 0.01; lookup by symbol is required.
-- **FR-006**: Product type MUST be explicit on creation; any value other than Equity MUST fail
-  with `UNSUPPORTED_PRODUCT_TYPE`. Symbols MUST be trimmed and normalized to uppercase.
-  Blank or duplicate symbols and invalid tick sizes MUST fail without changing existing products.
-- **FR-007**: Administrators MUST create, retrieve by ID, list, update, and delete participants.
-  Participants MUST have a generated immutable ID, a nonempty name, and explicit type Broker;
-  other types MUST fail with `UNSUPPORTED_PARTICIPANT_TYPE`. Names need not be unique.
-- **FR-008**: Deleting a product or participant with booked quantity MUST fail as a conflict.
-  Otherwise deletion MUST prevent active lookup and new orders while retaining historical
-  references. Deleted participant identities MUST lose access. A product symbol or tick change
-  with booked orders MUST fail; description and participant-name changes MAY proceed.
-- **FR-009**: An active Broker MUST be able to submit an order identifying an active product,
-  side buy or sell, type limit or market, and positive whole-share quantity. A limit order
-  MUST supply a positive price. Every accepted order MUST have day longevity, a generated
-  immutable order ID, an immutable original entry time, and a deterministic acceptance priority.
-- **FR-010**: An unknown or inactive product or participant, missing or unsupported side/type,
-  invalid quantity, or missing/non-positive limit price MUST reject the order before storage.
-  Failed validation MUST create no order report, trade, or book change; `REJECTED` is reserved.
-- **FR-011**: Limit prices MUST be normalized to the nearest multiple of the product's tick using
-  half-up rounding before matching, queue placement, or reporting. The normalized price MUST
-  remain positive. Financial values MUST use exact arithmetic; permitted ranges and maximum
-  precision MUST be published and excess values rejected rather than truncated or overflowed.
-  Prices, tick sizes, spreads, and midpoints MUST be represented as decimal strings in JSON
-  requests and responses, including order reports, trade records, and book price levels.
-  Strings MUST express the exact base-10 value using a decimal point where needed, without
-  locale-specific grouping or exponent notation. Share quantities, order versions, and numeric
-  response codes MUST remain JSON integers. A numeric or malformed JSON price value MUST fail
-  with HTTP 200, `success=false`, and `INVALID_LIMIT_PRICE`; an invalid tick representation MUST fail with
-  HTTP 200, `success=false`, and `INVALID_PRODUCT`, using the applicable entity-rejected numeric code.
-- **FR-012**: Market orders MUST carry no effective price and MUST report price as absent.
-  Supplying a price with a market order or unsupported longevity MUST fail explicitly.
-- **FR-013**: A product MUST have one logical order book, created only when needed. An active
-  product's unused book MUST be observable as empty without requiring a prior order.
-- **FR-014**: Incoming buy and sell orders MUST match only opposite-side resting orders for
-  the same product, with best price first and earliest current priority at equal prices.
-  Lowest offers are best for buys; highest bids are best for sells.
-- **FR-015**: A limit buy MUST match only prices at or below its normalized limit; a limit sell
-  MUST match only prices at or above its limit. A market order MUST consume available opposite
-  prices in priority order until filled or liquidity is exhausted.
-- **FR-016**: Each match MUST execute at the resting order's price for the smaller of the two
-  remaining quantities, create exactly one immutable trade, and update both orders together.
-  An order MUST NOT execute more than its effective total minus already traded quantity.
-- **FR-017**: Matching MUST finish all immediately eligible matches before the command outcome
-  is returned. Remaining limit quantity MUST rest; remaining market quantity MUST be dropped.
-  Fully filled, cancelled, and expired orders MUST immediately leave eligibility to trade.
-- **FR-018**: An owner MUST be able to amend price, total quantity, or both for a limit order
-  with booked quantity. The new total MUST be a positive integer strictly greater than the
-  already traded quantity. An effective price change or total increase MUST reset time priority;
-  a quantity-only reduction or effective no-op MUST retain priority. Original ID and entry time
-  MUST remain unchanged, and a marketable amendment MUST match immediately as the incoming order.
-  Every amendment MUST supply a positive integer `expectedVersion` equal to the order report's
-  current `version`. After access and input validation, this comparison MUST occur atomically
-  before checking amendability or changing state. A mismatch MUST return HTTP 200, `success=false`, code 1014,
-  and reason `ORDER_VERSION_CONFLICT` with no business effects.
-- **FR-019**: Original quantity MUST remain the submitted quantity. Each report MUST additionally
-  expose the current effective total quantity, so quantity increases and reductions remain
-  reconcilable. The latest accepted amended total replaces the prior effective total; prior
-  executions MUST remain immutable. Invalid amendments MUST leave all state and priority unchanged.
-- **FR-020**: An owner MUST be able to cancel the entire remaining booked quantity. Successful
-  cancellation MUST remove that quantity immediately, preserve executions, record the removal
-  reason `PARTICIPANT_CANCELLED`, and select `CANCELLED` or `PARTIALLY_CANCELLED` according to
-  traded quantity. Cancellation MUST NOT require an expected version and MUST act on the latest
-  remaining quantity at its turn. Dropping a market remainder MUST record reason
-  `MARKET_REMAINDER_DROPPED`.
-- **FR-021**: Cancellation MUST distinguish an unknown/inaccessible order, a filled order,
-  an already-cancelled order (including day expiry), and a market order with no booked remainder.
-  An amendment with a matching expected version MUST reject a terminal order with the specific
-  non-amendable result; a stale expected version MUST return the version-conflict result first.
-- **FR-022**: Day orders MUST expire at the end of their UTC calendar day. Before any new-day
-  operation reads or matches a book, prior-day remainders MUST be removed atomically, with reason
-  `DAY_EXPIRED` and the applicable cancellation status. Terminal reports and trades MUST remain.
-- **FR-023**: A Broker MUST retrieve an owned order report with order/product/participant IDs;
-  side, type, day longevity, normalized price if applicable; original entry time; original,
-  effective-total, traded, booked, and removed quantities; status; removal reason if applicable;
-  its current positive integer `version`; and IDs of all its trades. Traded + booked + removed
-  MUST equal effective total. Amendment reductions are reflected in effective total, not added
-  to removed quantity.
-- **FR-024**: Status MUST follow the Order Status Rules below for all submission, matching,
-  amendment, cancellation, and expiry outcomes. Rejected orders MUST NOT become stored reports.
-- **FR-025**: A Broker MUST retrieve a trade by ID and list its own trades. Each trade MUST record
-  generated ID, execution time, buy order ID, sell order ID, exact price, and positive quantity.
-  Trade data exposed to both counterparties MUST agree and MUST NOT expose unrelated private reports.
-- **FR-026**: A book snapshot MUST identify the active product by ID and current symbol, aggregate
-  only remaining booked quantities at each normalized price, sort bids descending and offers
-  ascending, and omit zero-volume levels. It MUST expose no order or participant identities.
-- **FR-027**: A Broker MUST obtain best/worst bid and offer prices, spread (best offer minus best
-  bid), midpoint (their arithmetic mean), volume at a specified side and exact price, and total
-  volume per side. An absent side MUST have zero volume and absent price metrics; a missing price
-  MUST have zero level volume, and a one-sided book MUST have absent spread and midpoint.
-- **FR-028**: Liveness MUST return HTTP 200 with an explicit running indication without credentials
-  or trading data. It confirms the running service, not persistent durability or market readiness.
-- **FR-029**: Every completed business decision MUST use HTTP 200 when rejected, with
-  `success=false`, a numeric `responseCode` selected by the Result Code Selection rules,
-  a specific symbolic `data.reasonCode`, a safe `errorMessage`, and `X-Correlation-ID`.
-  This includes semantic field validation, missing entities, unsupported entity types,
-  idempotency validation, and business conflicts. Request parsing/protocol, authentication,
-  authorization, routing, request-size/media, throttling/admission, and execution/infrastructure
-  failures MUST retain the HTTP 4xx/5xx statuses in the Failure Outcomes table, with the same
-  error envelope. Framework defaults MUST NOT convert a handled business rejection to 4xx.
-  Symbolic failure names are reason codes, not substitutes for numeric `responseCode`.
-- **FR-030**: Mutating commands MUST accept a caller-scoped idempotency identity. Within its
-  retention period, simultaneous or later retries of the same identity, operation, and payload
-  MUST return the original command outcome without repeated effects. Conflicting payload or
-  operation reuse MUST fail with `IDEMPOTENCY_CONFLICT`; different callers' identities MUST not
-  collide. Authentication and authorization MUST still be checked on every retry.
-- **FR-031**: A failed command before commit MUST leave no partial business effects. Once committed,
-  its outcome MUST remain discoverable despite response loss. A retriable failure before commit
-  MUST permit a subsequent attempt with the same identity; stored rejection outcomes MUST be
-  replayed consistently. Requests lacking a valid command identity MUST fail before mutation.
-- **FR-032**: The complete effects of a command, including each match, both order updates, book
-  changes, trades, idempotency outcome, and attributable audit record, MUST become visible
-  together. Conflicting commands MUST have one service-defined acceptance order with no
-  duplicate fills, negative quantities, stale amendments, or trades after successful cancellation.
-  An accepted order MUST start at version 1. Each subsequent committed command that changes an
-  order, including matching, amendment, cancellation, or expiry, MUST advance that order's version
-  once, even if that command creates several fills. Failed commands, effective no-ops, and
-  idempotent replays MUST NOT advance versions. Replay MUST return the original outcome before
-  comparing the original amendment's expected version against the now-current version.
-- **FR-033**: Each read MUST reflect a complete committed state. Separate reads MAY observe
-  intervening commands; a report's quantities and trade IDs and an individual book snapshot
-  MUST be internally consistent. Accepted priority MUST resolve equal displayed timestamps.
-- **FR-034**: The proof of concept MAY retain state in memory and lose it on restart. Its supported
-  deployment and lifetime MUST be explicit. Replacing storage MUST preserve observable matching,
-  concurrency, error, and API behavior without changing business rules. Persistent durability,
-  migration, and recovery MUST be defined before a persistent mode is adopted.
-- **FR-035**: Mutation history MUST identify actor, command, ordered outcome, and related orders
-  and trades, without leaking credentials. Correlated operational records MUST support measuring
-  latency, completed business work, error results, contention, and saturation. Audit retention
-  MUST match the advertised storage lifetime.
-- **FR-036**: Requests, numeric ranges, collection pages, waits, and overload behavior MUST have
-  documented finite limits before implementation. Lists MUST use bounded pages and deterministic
-  ordering, with continuation behavior documented for concurrent changes. Inputs exceeding a
-  published limit MUST fail explicitly, never silently truncate requested financial operations.
-- **FR-037**: Within the acceptance workload the service MUST meet SC-007. Beyond capacity it MUST
-  bound resource use, return explicit overload outcomes, preserve invariants, and recover as
-  specified by SC-008. Error replies MUST NOT be counted as successfully completed business work.
-- **FR-038**: The service MUST exchange JSON over HTTP using `/product/equity`,
-  `/participant/broker`, `/order`, `/orderBook/{productId}`, and `/status` as the resource
-  families described under API Resource Requirements. Existing role and ownership rules MUST
-  apply to every operation; choosing a resource path MUST NOT grant access to the internal API.
-- **FR-039**: Every resource read MUST be available using GET without a request body or a request
-  `Content-Type` header. IDs, symbols, filters, and pagination inputs for reads MUST use path
-  or query parameters. A client MUST NOT need to send an empty JSON object to perform a read.
-- **FR-040**: Every JSON response, including middleware errors, liveness, empty collections,
-  deletions, and unexpected failures, MUST use the JSON Response Envelope below. Responses
-  MUST declare `Content-Type: application/json`; numeric codes MUST be JSON integers, not strings.
-- **FR-041**: Unexpected failures MUST return HTTP 500, `success=false`, `responseCode=999999`,
-  `errorMessage="An unexpected error occurred."`, and `data.reasonCode=INTERNAL_ERROR`.
-  Responses MUST NOT expose exception text, stack traces, implementation/storage details,
-  credentials, or private payloads; correlated diagnostics remain internal.
-- **FR-042**: All API date/time values MUST use `dd-MMM-yyyy HH:mm:ss.SSS` with English month
-  abbreviations, a four-digit year, 24-hour clock, and exactly three millisecond digits. UTC is
-  the documented timezone for this offset-free representation; timestamps MUST NOT vary with
-  host locale or timezone. Display formatting MUST NOT determine matching priority.
-- **FR-043**: Every operation MUST return its own entity-and-outcome numeric code from the
-  Application Result Codes and Result Code Selection rules. HTTP status reflects whether request
-  handling/execution completed; `success` reflects the business outcome independently of both
-  HTTP status and an order's stored trading status. HTTP 200 MUST permit `success=false`.
-  Idempotent replay MUST retain the original HTTP status, numeric code, and business payload.
-- **FR-044**: Every application-generated HTTP response MUST carry `X-Correlation-ID` without
-  adding an extra top-level envelope field. Creation MUST return HTTP 201; successful reads,
-  amendments, updates, deletions, cancellations, and liveness MUST return HTTP 200 with an
-  envelope. Handled business rejections also MUST return HTTP 200 with `success=false`.
-  Every response MUST carry `Cache-Control: no-store`; entity-not-found or rejection envelopes
-  MUST NOT be cached as successful GET results. A successful deletion MUST NOT use HTTP 204.
+Each numbered parent below is a topic group, not a compound requirement. IDs such as
+`FR-018.8` identify individual requirements and are the units for implementation, verification,
+and compliance reporting. An existing reference to `FR-018` refers to that group as a whole.
+
+Each child states one obligation or an explicitly retained permission. Its condition can rely on
+shared definitions and earlier validation steps; it does not require an independent implementation.
+`MUST` and `MUST NOT` are mandatory. `MAY` preserves an existing optional permission.
+
+Rejection statements use the existing [Failure Outcomes](#failure-outcomes) and
+[Result Code Selection](#result-code-selection) profiles. These shared profiles specify the HTTP
+status, envelope, numeric code, and reason, so a rejection rule does not repeat that entire contract.
+Related rules can share a scenario or test fixture while receiving separate pass/fail results.
+The [requirements traceability matrix](requirements-traceability.md) maps the unchanged user
+stories to the atomic IDs and records the original-to-new requirement mapping.
+
+#### FR-001 — API boundaries
+
+This feature is a backend service with no user interface. Liveness is defined in FR-028; resource
+paths are defined in FR-038.
+
+- **FR-001.1**: The system MUST expose an internal HTTP REST interface for administration.
+- **FR-001.2**: The system MUST expose an external HTTP REST interface for participants.
+
+#### FR-002 — Authentication and roles
+
+- **FR-002.1**: The system MUST authenticate the caller of every operation except liveness.
+- **FR-002.2**: The system MUST enforce the caller role required by the requested operation.
+- **FR-002.3**: The system MUST deny participants access to every internal API operation.
+- **FR-002.4**: The system MUST NOT grant Broker order-entry permission solely because an identity
+  has Administrator authority.
+
+#### FR-003 — Participant identity and ownership
+
+- **FR-003.1**: The system MUST bind each participant identity to exactly one active Broker.
+- **FR-003.2**: The system MUST derive the Broker identity for an order submission from the
+  authenticated participant identity.
+- **FR-003.3**: The system MUST authorize an amendment against the authenticated participant's
+  Broker identity.
+- **FR-003.4**: The system MUST authorize a cancellation against the authenticated participant's
+  Broker identity.
+- **FR-003.5**: The system MUST authorize a private report against the authenticated participant's
+  Broker identity.
+- **FR-003.6**: The system MUST NOT use a client-supplied participant ID as proof of identity.
+- **FR-003.7**: The system MUST reject an attempt by a participant to act for a different Broker
+  with `FORBIDDEN`.
+
+#### FR-004 — Private and shared information
+
+- **FR-004.1**: The system MUST restrict a participant's order-report access to orders owned by its
+  Broker.
+- **FR-004.2**: The system MUST restrict a participant's trade access to trades involving its
+  Broker.
+- **FR-004.3**: The system MUST allow every active participant to look up active products through
+  the external API.
+- **FR-004.4**: The system MUST allow every active participant to read aggregate order books through
+  the external API.
+- **FR-004.5**: The system MUST restrict participant administration to the internal API.
+- **FR-004.6**: The system MUST restrict participant lists to the internal API.
+
+#### FR-005 — Product management and records
+
+Symbol normalization, uniqueness, and invalid-product handling are defined in FR-006.
+
+- **FR-005.1**: The system MUST allow an Administrator to create a product.
+- **FR-005.2**: The system MUST allow an Administrator to retrieve a product by ID.
+- **FR-005.3**: The system MUST allow an Administrator to retrieve a product by symbol.
+- **FR-005.4**: The system MUST allow an Administrator to list products.
+- **FR-005.5**: The system MUST allow an Administrator to update a product.
+- **FR-005.6**: The system MUST allow an Administrator to delete a product.
+- **FR-005.7**: The system MUST generate the ID of each created product.
+- **FR-005.8**: Each product ID MUST be unique.
+- **FR-005.9**: Each product ID MUST remain immutable.
+- **FR-005.10**: Each stored product MUST have a symbol.
+- **FR-005.11**: Each stored product MUST have a nonempty description.
+- **FR-005.12**: Each stored product MUST have type Equity.
+- **FR-005.13**: Each stored product MUST have a positive tick size.
+- **FR-005.14**: The system MUST default an omitted product tick size to 0.01.
+
+#### FR-006 — Product validation and symbol normalization
+
+- **FR-006.1**: The system MUST require an explicit product type on product creation.
+- **FR-006.2**: The system MUST reject a product type other than Equity with
+  `UNSUPPORTED_PRODUCT_TYPE`.
+- **FR-006.3**: The system MUST trim surrounding whitespace from a product symbol before validating
+  it.
+- **FR-006.4**: The system MUST normalize a product symbol to uppercase before validating or looking
+  up that symbol.
+- **FR-006.5**: Normalized product symbols MUST be unique.
+- **FR-006.6**: The system MUST reject a blank normalized product symbol with `INVALID_PRODUCT`.
+- **FR-006.7**: The system MUST reject a duplicate normalized product symbol with
+  `PRODUCT_SYMBOL_EXISTS`.
+- **FR-006.8**: The system MUST reject an invalid product tick size with `INVALID_PRODUCT`.
+- **FR-006.9**: A rejected product change MUST leave the existing product state unchanged.
+
+#### FR-007 — Broker management and records
+
+- **FR-007.1**: The system MUST allow an Administrator to create a participant.
+- **FR-007.2**: The system MUST allow an Administrator to retrieve a participant by ID.
+- **FR-007.3**: The system MUST allow an Administrator to list participants.
+- **FR-007.4**: The system MUST allow an Administrator to update a participant.
+- **FR-007.5**: The system MUST allow an Administrator to delete a participant.
+- **FR-007.6**: The system MUST generate the ID of each created participant.
+- **FR-007.7**: Each participant ID MUST be unique.
+- **FR-007.8**: Each participant ID MUST remain immutable.
+- **FR-007.9**: Each stored participant MUST have a nonempty name.
+- **FR-007.10**: Each stored participant MUST have type Broker.
+- **FR-007.11**: The system MUST require an explicit participant type on participant creation.
+- **FR-007.12**: The system MUST reject a participant type other than Broker with
+  `UNSUPPORTED_PARTICIPANT_TYPE`.
+- **FR-007.13**: The system MUST permit different participants to have the same name.
+
+#### FR-008 — Deletion and reference-data changes
+
+Booked quantity is the unfilled quantity still resting on the book. The final two statements
+preserve the existing permission, rather than introducing a new mandatory update capability.
+
+- **FR-008.1**: The system MUST reject product deletion while any order for that product has booked
+  quantity.
+- **FR-008.2**: The system MUST reject participant deletion while any order owned by that
+  participant has booked quantity.
+- **FR-008.3**: The system MUST exclude a deleted product from active lookup.
+- **FR-008.4**: The system MUST exclude a deleted participant from active lookup.
+- **FR-008.5**: The system MUST reject a new order referencing a deleted product.
+- **FR-008.6**: The system MUST reject a new order referencing a deleted participant.
+- **FR-008.7**: The system MUST retain historical references to deleted products.
+- **FR-008.8**: The system MUST retain historical references to deleted participants.
+- **FR-008.9**: The system MUST revoke API access for identities bound to a deleted participant.
+- **FR-008.10**: The system MUST reject a product-symbol change while that product has booked
+  orders.
+- **FR-008.11**: The system MUST reject a product-tick change while that product has booked orders.
+- **FR-008.12**: Product-description updates MAY proceed while orders are booked, subject to the
+  normal update rules.
+- **FR-008.13**: Participant-name updates MAY proceed while orders are booked, subject to the normal
+  update rules.
+
+#### FR-009 — Order submission and assigned attributes
+
+- **FR-009.1**: The system MUST allow an active Broker to submit an order for a product.
+- **FR-009.2**: Each accepted order MUST identify its product.
+- **FR-009.3**: Each accepted order MUST identify its participant.
+- **FR-009.4**: Each accepted order MUST have side buy or sell.
+- **FR-009.5**: Each accepted order MUST have type limit or market.
+- **FR-009.6**: Each accepted order MUST have a positive whole-share quantity.
+- **FR-009.7**: Each accepted limit order MUST have a positive price.
+- **FR-009.8**: Each accepted order MUST have day longevity.
+- **FR-009.9**: The system MUST generate an ID for each accepted order.
+- **FR-009.10**: Each order ID MUST be unique.
+- **FR-009.11**: Each order ID MUST remain immutable.
+- **FR-009.12**: The system MUST assign the original entry time of each accepted order.
+- **FR-009.13**: An order's original entry time MUST remain immutable.
+- **FR-009.14**: The system MUST assign a deterministic acceptance priority to each accepted order.
+
+#### FR-010 — Order-entry rejection rules
+
+Failure Outcomes supplies the specific reason for each rejection. REJECTED is a reserved status, not
+a stored report status; see FR-024.
+
+- **FR-010.1**: The system MUST reject an order whose product does not exist.
+- **FR-010.2**: The system MUST reject an order whose product is inactive.
+- **FR-010.3**: The system MUST reject an order whose participant does not exist.
+- **FR-010.4**: The system MUST reject an order whose participant is inactive.
+- **FR-010.5**: The system MUST reject an order with a missing side.
+- **FR-010.6**: The system MUST reject an order with an unsupported side.
+- **FR-010.7**: The system MUST reject an order with a missing type.
+- **FR-010.8**: The system MUST reject an order with an unsupported type.
+- **FR-010.9**: The system MUST reject an order whose quantity is not positive.
+- **FR-010.10**: The system MUST reject an order whose quantity is not a whole number.
+- **FR-010.11**: The system MUST reject a malformed order quantity.
+- **FR-010.12**: The system MUST reject an out-of-range order quantity.
+- **FR-010.13**: The system MUST reject a limit order with no price.
+- **FR-010.14**: The system MUST reject a limit order whose price is not positive.
+- **FR-010.15**: The system MUST NOT store an order rejected at entry.
+- **FR-010.16**: The system MUST NOT create a trade for an order rejected at entry.
+- **FR-010.17**: The system MUST NOT change an order book for an order rejected at entry.
+
+#### FR-011 — Exact values and decimal encoding
+
+Price use includes matching, queue placement, and reporting. JSON encoding applies wherever the
+value appears, including reports, trades, and price levels. Response-code integer encoding is
+defined in FR-040.9; all rejection responses follow FR-029.
+
+- **FR-011.1**: The system MUST normalize each accepted limit price to the nearest multiple of the
+  product tick using half-up rounding before using that price.
+- **FR-011.2**: The system MUST reject a limit price whose normalized value is not positive.
+- **FR-011.3**: The system MUST use exact arithmetic for financial values.
+- **FR-011.4**: The system MUST publish the permitted range of each financial numeric input.
+- **FR-011.5**: The system MUST publish the maximum accepted precision of each financial numeric
+  input.
+- **FR-011.6**: The system MUST reject a financial input outside its published range.
+- **FR-011.7**: The system MUST reject a financial input exceeding its published precision.
+- **FR-011.8**: Every JSON price value MUST be encoded as a decimal string.
+- **FR-011.9**: Every JSON tick-size value MUST be encoded as a decimal string.
+- **FR-011.10**: Every JSON spread value MUST be encoded as a decimal string.
+- **FR-011.11**: Every JSON midpoint value MUST be encoded as a decimal string.
+- **FR-011.12**: A decimal string MUST express its exact base-10 value.
+- **FR-011.13**: A fractional decimal string MUST use a dot as its decimal separator.
+- **FR-011.14**: A decimal string MUST NOT contain locale-specific digit grouping.
+- **FR-011.15**: A decimal string MUST NOT use exponent notation.
+- **FR-011.16**: Every JSON share quantity MUST be encoded as an integer.
+- **FR-011.17**: Every JSON order-version value MUST be encoded as an integer.
+- **FR-011.18**: The system MUST reject a JSON numeric price value with `INVALID_LIMIT_PRICE`.
+- **FR-011.19**: The system MUST reject a malformed decimal price string with `INVALID_LIMIT_PRICE`.
+- **FR-011.20**: The system MUST reject an invalid tick representation with `INVALID_PRODUCT`.
+
+#### FR-012 — Market-order price and longevity
+
+- **FR-012.1**: A market order MUST have no effective price.
+- **FR-012.2**: A market-order report MUST omit the price.
+- **FR-012.3**: The system MUST reject a price supplied with a market order with
+  `MARKET_PRICE_NOT_ALLOWED`.
+- **FR-012.4**: The system MUST reject unsupported order longevity with `UNSUPPORTED_LONGEVITY`.
+
+#### FR-013 — Order-book lifecycle
+
+- **FR-013.1**: The system MUST maintain one logical order book per product.
+- **FR-013.2**: The system MUST create a product's order book only when needed.
+- **FR-013.3**: The system MUST return an empty book view for an active product that has not yet
+  needed a book.
+
+#### FR-014 — Matching eligibility and priority
+
+- **FR-014.1**: The system MUST match an incoming order only against orders for the same product.
+- **FR-014.2**: The system MUST match an incoming order only against opposite-side orders.
+- **FR-014.3**: The system MUST match an incoming order only against resting orders.
+- **FR-014.4**: The system MUST select the lowest eligible offer price first for an incoming buy.
+- **FR-014.5**: The system MUST select the highest eligible bid price first for an incoming sell.
+- **FR-014.6**: The system MUST select the earliest current priority first among eligible resting
+  orders at the same price.
+
+#### FR-015 — Limit and market price eligibility
+
+FR-014 supplies best-price selection; FR-017 supplies matching completion and remainder handling.
+
+- **FR-015.1**: The system MUST match a limit buy only at prices at or below its normalized limit.
+- **FR-015.2**: The system MUST match a limit sell only at prices at or above its normalized limit.
+- **FR-015.3**: The system MUST apply no limit-price constraint when matching a market order.
+
+#### FR-016 — Individual executions
+
+Publication of both affected orders and the trade as one complete transaction is governed by
+FR-032.1.
+
+- **FR-016.1**: Each match MUST execute at the resting order's price.
+- **FR-016.2**: Each match MUST execute the smaller of the incoming and resting orders' remaining
+  quantities.
+- **FR-016.3**: Each match MUST create exactly one trade.
+- **FR-016.4**: A committed trade MUST remain immutable.
+- **FR-016.5**: A match MUST NOT execute more than an order's effective total minus its already
+  traded quantity.
+
+#### FR-017 — Matching completion and remaining quantities
+
+- **FR-017.1**: The system MUST finish every immediately eligible match before returning the command
+  outcome.
+- **FR-017.2**: The system MUST place an unfilled limit-order remainder on the book.
+- **FR-017.3**: The system MUST drop an unfilled market-order remainder.
+- **FR-017.4**: A fully filled order MUST immediately cease being eligible to trade.
+- **FR-017.5**: A cancelled order MUST immediately cease being eligible to trade.
+- **FR-017.6**: An expired order MUST immediately cease being eligible to trade.
+
+#### FR-018 — Order amendments
+
+An eligible target is a limit order with booked quantity after the common checks. Eligibility checks
+run after version comparison. Quantity means the new overall total, including executions. Order ID
+and original entry time remain immutable under FR-009.11 and FR-009.13; expectedVersion uses the
+integer encoding in FR-011.17. Failure Outcomes defines the complete rejection response.
+
+- **FR-018.1**: The system MUST allow the owner to amend the price of an eligible limit order.
+- **FR-018.2**: The system MUST allow the owner to amend the total quantity of an eligible limit
+  order.
+- **FR-018.3**: The system MUST allow the owner to amend price and total quantity in the same
+  command.
+- **FR-018.4**: The system MUST reject amendment of an order that is not a limit order.
+- **FR-018.5**: The system MUST reject amendment of an order that has no booked quantity.
+- **FR-018.6**: The system MUST reject an amended total that is not a positive integer.
+- **FR-018.7**: The system MUST reject an amended total that is less than or equal to the already
+  traded quantity.
+- **FR-018.8**: The system MUST reset time priority when an amendment changes the normalized price.
+- **FR-018.9**: The system MUST reset time priority when an amendment increases total quantity.
+- **FR-018.10**: The system MUST retain time priority for a quantity-only reduction.
+- **FR-018.11**: The system MUST retain time priority for an effective no-op amendment.
+- **FR-018.12**: The system MUST match a marketable amendment before returning its outcome.
+- **FR-018.13**: The system MUST treat a marketable amended order as the incoming order.
+- **FR-018.14**: The system MUST require `expectedVersion` on every amendment.
+- **FR-018.15**: The system MUST require a positive `expectedVersion`.
+- **FR-018.16**: The system MUST compare the expected version only after access and input
+  validation.
+- **FR-018.17**: The system MUST compare the expected version before evaluating whether the order
+  remains amendable.
+- **FR-018.18**: The system MUST protect version comparison and the resulting state change as one
+  atomic operation.
+- **FR-018.19**: The system MUST reject an expected-version mismatch with `ORDER_VERSION_CONFLICT`.
+
+#### FR-019 — Amendment accounting and rejected changes
+
+Business state includes affected orders, books, quantities, prices, priority, and versions. Prior
+executions remain immutable under FR-016.4. Report presentation is defined by FR-023.11.
+
+- **FR-019.1**: An order's original quantity MUST remain equal to its submitted quantity.
+- **FR-019.2**: An accepted quantity amendment MUST replace the previous effective total with the
+  new total.
+- **FR-019.3**: A rejected amendment MUST leave all pre-request business state unchanged.
+
+#### FR-020 — Cancellation effects
+
+- **FR-020.1**: The system MUST allow an order's owner to cancel its entire remaining booked
+  quantity.
+- **FR-020.2**: A successful cancellation MUST set the order's booked quantity to zero immediately.
+- **FR-020.3**: A cancellation MUST preserve the order's traded quantity.
+- **FR-020.4**: A participant cancellation MUST record removal reason `PARTICIPANT_CANCELLED`.
+- **FR-020.5**: A cancellation with no traded quantity MUST select status `CANCELLED`.
+- **FR-020.6**: A cancellation with positive traded quantity MUST select status
+  `PARTIALLY_CANCELLED`.
+- **FR-020.7**: The system MUST NOT require an expected version for cancellation.
+- **FR-020.8**: The system MUST cancel the remaining quantity present when that cancellation takes
+  its turn.
+- **FR-020.9**: A dropped market-order remainder MUST record reason `MARKET_REMAINDER_DROPPED`.
+
+#### FR-021 — Invalid cancellation and amendment states
+
+The filled-order cancellation rule takes precedence for a FILLED market order. Version comparison
+precedes terminal-state evaluation under FR-018.17; replay is governed by FR-030 and FR-032.10.
+
+- **FR-021.1**: The system MUST reject cancellation of an unknown or inaccessible order with
+  `ORDER_NOT_FOUND`.
+- **FR-021.2**: The system MUST reject cancellation of a filled order with `ORDER_ALREADY_FILLED`.
+- **FR-021.3**: The system MUST reject a new cancellation of an already-cancelled order with
+  `ORDER_ALREADY_CANCELLED`.
+- **FR-021.4**: The system MUST reject cancellation of a day-expired order with
+  `ORDER_ALREADY_CANCELLED`.
+- **FR-021.5**: The system MUST reject cancellation of a market order with no booked remainder with
+  `ORDER_NOT_ON_BOOK`.
+- **FR-021.6**: The system MUST reject amendment of a terminal order with `ORDER_NOT_AMENDABLE` when
+  its expected version matches.
+
+#### FR-022 — UTC day expiry
+
+- **FR-022.1**: The system MUST expire a day order at the end of its UTC calendar day.
+- **FR-022.2**: The system MUST remove prior-day open remainders before a new-day operation reads
+  the book.
+- **FR-022.3**: The system MUST remove prior-day open remainders before a new-day operation matches
+  the book.
+- **FR-022.4**: The system MUST remove the affected prior-day remainders as an atomic expiry
+  operation.
+- **FR-022.5**: An expired remainder MUST record removal reason `DAY_EXPIRED`.
+- **FR-022.6**: Expiry with no traded quantity MUST select status `CANCELLED`.
+- **FR-022.7**: Expiry with positive traded quantity MUST select status `PARTIALLY_CANCELLED`.
+- **FR-022.8**: The system MUST retain terminal order reports after expiry.
+- **FR-022.9**: The system MUST retain prior trades after expiry.
+
+#### FR-023 — Order reports and quantity reconciliation
+
+Existing bounded pagination and consistency rules still apply. Market-price omission is defined in
+FR-012.2; assigning the amended effective total is defined in FR-019.2.
+
+- **FR-023.1**: The system MUST allow a Broker to retrieve a report for an order it owns.
+- **FR-023.2**: An order report MUST include the order ID.
+- **FR-023.3**: An order report MUST include the product ID.
+- **FR-023.4**: An order report MUST include the participant ID.
+- **FR-023.5**: An order report MUST include the side.
+- **FR-023.6**: An order report MUST include the order type.
+- **FR-023.7**: An order report MUST include day longevity.
+- **FR-023.8**: A limit-order report MUST include its normalized price.
+- **FR-023.9**: An order report MUST include the original entry time.
+- **FR-023.10**: An order report MUST include the original quantity.
+- **FR-023.11**: An order report MUST include the current effective total quantity.
+- **FR-023.12**: An order report MUST include the traded quantity.
+- **FR-023.13**: An order report MUST include the booked quantity.
+- **FR-023.14**: An order report MUST include the removed quantity.
+- **FR-023.15**: An order report MUST include the status.
+- **FR-023.16**: An order report MUST include the removal reason when applicable.
+- **FR-023.17**: An order report MUST include the current version.
+- **FR-023.18**: An order report MUST include the IDs of all trades associated with that report's
+  committed state.
+- **FR-023.19**: An order report's version MUST be a positive integer.
+- **FR-023.20**: For each order, traded quantity plus booked quantity plus removed quantity MUST
+  equal effective total quantity.
+- **FR-023.21**: A quantity reduction through amendment MUST NOT increase removed quantity.
+
+#### FR-024 — Stored order status
+
+Submission, matching, amendment, cancellation, and expiry are all subject to the same status table.
+The no-storage entry rule is FR-010.15.
+
+- **FR-024.1**: The system MUST assign each stored order the status defined by the Order Status
+  Rules for its current outcome.
+- **FR-024.2**: The system MUST NOT expose a stored report with status `REJECTED`.
+
+#### FR-025 — Trade retrieval and records
+
+Ownership restrictions are defined in FR-004.2. Decimal and timestamp encodings are defined in
+FR-011 and FR-042.
+
+- **FR-025.1**: The system MUST allow a Broker to retrieve an accessible trade by ID.
+- **FR-025.2**: The system MUST allow a Broker to list its own trades.
+- **FR-025.3**: Each trade MUST have a system-generated ID.
+- **FR-025.4**: Each trade MUST record its execution time.
+- **FR-025.5**: Each trade MUST record its buy order ID.
+- **FR-025.6**: Each trade MUST record its sell order ID.
+- **FR-025.7**: Each trade MUST record its exact execution price.
+- **FR-025.8**: Each trade MUST record its executed quantity.
+- **FR-025.9**: Each trade's quantity MUST be positive.
+- **FR-025.10**: The system MUST return identical trade data to both counterparties.
+- **FR-025.11**: The system MUST NOT disclose an unrelated private order report through trade
+  retrieval.
+
+#### FR-026 — Order-book snapshots
+
+- **FR-026.1**: A book snapshot MUST include the active product ID.
+- **FR-026.2**: A book snapshot MUST include the product's current symbol.
+- **FR-026.3**: A book snapshot MUST aggregate quantity by normalized price level.
+- **FR-026.4**: A book snapshot MUST count only remaining booked quantity.
+- **FR-026.5**: A book snapshot MUST sort bids from highest to lowest price.
+- **FR-026.6**: A book snapshot MUST sort offers from lowest to highest price.
+- **FR-026.7**: A book snapshot MUST omit zero-volume price levels.
+- **FR-026.8**: A book snapshot MUST NOT disclose individual order identities.
+- **FR-026.9**: A book snapshot MUST NOT disclose participant identities.
+
+#### FR-027 — Order-book calculations
+
+- **FR-027.1**: The system MUST provide the highest available bid as the best bid.
+- **FR-027.2**: The system MUST provide the lowest available bid as the worst bid.
+- **FR-027.3**: The system MUST provide the lowest available offer as the best offer.
+- **FR-027.4**: The system MUST provide the highest available offer as the worst offer.
+- **FR-027.5**: The system MUST calculate spread as best offer minus best bid when both sides have
+  prices.
+- **FR-027.6**: The system MUST calculate midpoint as the exact arithmetic mean of best bid and best
+  offer when both exist.
+- **FR-027.7**: The system MUST provide the booked volume at a specified side and exact price.
+- **FR-027.8**: The system MUST provide total booked volume for each side.
+- **FR-027.9**: An empty side MUST have zero volume.
+- **FR-027.10**: An empty side MUST have no best-price value.
+- **FR-027.11**: An empty side MUST have no worst-price value.
+- **FR-027.12**: A missing price level MUST have zero volume.
+- **FR-027.13**: A book lacking either side MUST have no spread value.
+- **FR-027.14**: A book lacking either side MUST have no midpoint value.
+
+#### FR-028 — Service liveness
+
+Liveness confirms that the service is running; it does not promise storage durability or market
+readiness.
+
+- **FR-028.1**: The liveness endpoint MUST return HTTP 200 while the service is running.
+- **FR-028.2**: The liveness response MUST include an explicit running indication.
+- **FR-028.3**: The liveness endpoint MUST NOT require credentials.
+- **FR-028.4**: The liveness response MUST NOT expose sensitive configuration.
+- **FR-028.5**: The liveness response MUST NOT expose trading data.
+
+#### FR-029 — Business and technical failure responses
+
+Business rejection includes semantic validation, missing entities, unsupported entity types,
+idempotency validation, and business conflicts. The failure tables define request parsing, protocol,
+authentication, authorization, routing, request size/media, throttling, capacity, storage, and
+unexpected execution outcomes. Numeric codes are selected by FR-043.1; envelope structure is defined
+by FR-040; correlation is defined by FR-044.1.
+
+- **FR-029.1**: The system MUST return HTTP 200 for a completed business rejection.
+- **FR-029.2**: Every failed outcome MUST set `success=false`, including a business rejection
+  carried by HTTP 200.
+- **FR-029.3**: Every failed outcome MUST include its specific symbolic `data.reasonCode`.
+- **FR-029.4**: Every failed outcome MUST include a safe human-readable `errorMessage`.
+- **FR-029.5**: The system MUST use the technical HTTP status in Failure Outcomes for a request,
+  security, admission, or execution failure.
+- **FR-029.6**: The system MUST NOT allow framework defaults to convert a handled business rejection
+  into an HTTP 4xx response.
+
+#### FR-030 — Caller-scoped idempotency
+
+The same rules apply to concurrent duplicates and later retries. Exact HTTP/code/payload replay is
+defined by FR-043.3 through FR-043.5.
+
+- **FR-030.1**: The system MUST accept a caller-scoped idempotency identity for each mutating
+  command.
+- **FR-030.2**: The system MUST return the original outcome for a same-identity retry of the same
+  operation and payload within its retention period.
+- **FR-030.3**: The system MUST NOT repeat business effects for a same-identity retry.
+- **FR-030.4**: The system MUST reject a reused identity with different payload as
+  `IDEMPOTENCY_CONFLICT`.
+- **FR-030.5**: The system MUST reject a reused identity for a different operation as
+  `IDEMPOTENCY_CONFLICT`.
+- **FR-030.6**: The system MUST keep different callers' idempotency identities in separate scopes.
+- **FR-030.7**: The system MUST recheck authentication on every retry.
+- **FR-030.8**: The system MUST recheck authorization on every retry.
+
+#### FR-031 — Failed and uncertain command outcomes
+
+- **FR-031.1**: A command that fails before commit MUST leave no partial business effects.
+- **FR-031.2**: The system MUST keep a committed command outcome discoverable after response loss.
+- **FR-031.3**: The system MUST permit retry with the same identity after a retriable pre-commit
+  failure.
+- **FR-031.4**: The system MUST replay a retained rejection outcome consistently.
+- **FR-031.5**: The system MUST reject a mutating request without a valid command identity before
+  any business mutation.
+
+#### FR-032 — Atomic commands and order versions
+
+The atomic state in FR-032.1 includes matches, both sides' order changes, book changes, trades, the
+idempotency outcome, and attributable audit record. Version advancement is per changed order per
+command, even for multiple fills. Stale-amendment rejection is defined by FR-018.19; cancelled-order
+ineligibility is defined by FR-017.5.
+
+- **FR-032.1**: The complete business effects of a command MUST become visible as one atomic state
+  change.
+- **FR-032.2**: The system MUST establish one acceptance order for conflicting commands.
+- **FR-032.3**: Concurrent execution MUST NOT create duplicate fills.
+- **FR-032.4**: Concurrent execution MUST NOT create negative quantities.
+- **FR-032.5**: An accepted order MUST start at version 1.
+- **FR-032.6**: A subsequent committed command MUST advance each order it changes by exactly one
+  version.
+- **FR-032.7**: A failed command MUST NOT advance an order version.
+- **FR-032.8**: An effective no-op MUST NOT advance an order version.
+- **FR-032.9**: An idempotent replay MUST NOT advance an order version.
+- **FR-032.10**: The system MUST resolve an idempotent replay before comparing its original
+  amendment version with the current order version.
+
+#### FR-033 — Read consistency and timestamp ties
+
+Consistency applies within each response. Separate reads can observe different committed states
+because intervening commands are permitted.
+
+- **FR-033.1**: Each read MUST reflect a complete committed state.
+- **FR-033.2**: An order report's quantities MUST reconcile with its trade references for that
+  response's committed state.
+- **FR-033.3**: Each book snapshot MUST be internally consistent.
+- **FR-033.4**: The acceptance-priority order MUST unambiguously resolve equal displayed timestamps.
+
+#### FR-034 — Storage mode and replacement
+
+The first proof of concept is permitted to use memory and lose process-local state on restart; the
+user-selected implementation does so. This permission does not promise durability.
+
+- **FR-034.1**: The system MUST document its supported deployment topology.
+- **FR-034.2**: The system MUST document the lifetime of retained data in its selected storage mode.
+- **FR-034.3**: The system MUST explicitly disclose restart data loss in the in-memory mode.
+- **FR-034.4**: Replacing a storage adapter MUST preserve observable matching behavior.
+- **FR-034.5**: Replacing a storage adapter MUST preserve concurrency guarantees.
+- **FR-034.6**: Replacing a storage adapter MUST preserve application error behavior.
+- **FR-034.7**: Replacing a storage adapter MUST preserve public API behavior.
+- **FR-034.8**: Replacing a storage adapter MUST NOT require changes to business rules.
+- **FR-034.9**: The project MUST define durability guarantees before adopting persistent storage.
+- **FR-034.10**: The project MUST define migration behavior before adopting persistent storage.
+- **FR-034.11**: The project MUST define recovery behavior before adopting persistent storage.
+
+#### FR-035 — Audit history and operational evidence
+
+- **FR-035.1**: Each mutation-history record MUST identify its actor.
+- **FR-035.2**: Each mutation-history record MUST identify its command.
+- **FR-035.3**: Each mutation-history record MUST identify its outcome.
+- **FR-035.4**: Each mutation-history record MUST identify its ordering information.
+- **FR-035.5**: Each mutation-history record MUST identify the orders it affects.
+- **FR-035.6**: Each mutation-history record MUST identify the trades it creates.
+- **FR-035.7**: Mutation history MUST NOT expose credentials.
+- **FR-035.8**: Operational records MUST carry the invocation correlation identifier.
+- **FR-035.9**: Operational records MUST support measuring request latency.
+- **FR-035.10**: Operational records MUST support measuring completed business throughput.
+- **FR-035.11**: Operational records MUST support measuring application error results.
+- **FR-035.12**: Operational records MUST support measuring contention.
+- **FR-035.13**: Operational records MUST support measuring saturation.
+- **FR-035.14**: Audit retention MUST match the advertised storage lifetime.
+
+#### FR-036 — Finite limits and bounded queries
+
+- **FR-036.1**: The project MUST publish finite request-size limits before implementation.
+- **FR-036.2**: The project MUST publish finite numeric-input limits before implementation.
+- **FR-036.3**: The project MUST publish finite collection-page limits before implementation.
+- **FR-036.4**: The project MUST publish finite wait limits before implementation.
+- **FR-036.5**: The project MUST document overload behavior before implementation.
+- **FR-036.6**: The system MUST bound every collection page.
+- **FR-036.7**: The system MUST use deterministic ordering for collection results.
+- **FR-036.8**: The project MUST document continuation behavior when collection data changes
+  concurrently.
+- **FR-036.9**: The system MUST explicitly reject an input that exceeds a published limit.
+- **FR-036.10**: The system MUST NOT silently truncate a requested financial operation to satisfy a
+  limit.
+
+#### FR-037 — Capacity and overload acceptance
+
+SC-007 fixes the baseline dataset, request mix, hardware, and measurement boundary. SC-008 fixes the
+2,000-request/s, up-to-1,000-client, 60-second burst. These existing targets are unchanged; HTTP 200
+with success=false is still a rejected outcome.
+
+- **FR-037.1**: The system MUST complete at least 1,000 valid business requests per second under the
+  SC-007 baseline.
+- **FR-037.2**: The system MUST support the baseline workload with 100 concurrent clients.
+- **FR-037.3**: The system MUST sustain the baseline acceptance workload for 15 continuous minutes.
+- **FR-037.4**: Baseline p95 request completion latency MUST be at most 100 milliseconds.
+- **FR-037.5**: Baseline p99 request completion latency MUST be at most 250 milliseconds.
+- **FR-037.6**: The baseline unexpected-failure rate MUST remain below 0.1 percent.
+- **FR-037.7**: Baseline peak service resident memory MUST be at most 4 GiB.
+- **FR-037.8**: The system MUST return an explicit overload outcome when admission capacity is
+  exceeded.
+- **FR-037.9**: The system MUST preserve business invariants under the SC-008 overload workload.
+- **FR-037.10**: Overload peak service resident memory MUST be at most 4 GiB.
+- **FR-037.11**: Overload response p99 latency MUST be at most 2 seconds.
+- **FR-037.12**: The system MUST recover baseline acceptance performance within 30 seconds after
+  offered load returns to baseline.
+- **FR-037.13**: Performance reports MUST exclude rejected outcomes from successfully completed
+  business work.
+- **FR-037.14**: The system MUST enforce its published resource bounds during overload.
+
+#### FR-038 — JSON resources and URL bases
+
+The API Resource Requirements table defines each family's capabilities. Role enforcement remains
+FR-002; caller binding and ownership remain FR-003 and FR-004. Selecting a URL does not confer
+authority.
+
+- **FR-038.1**: The service MUST expose its application interfaces over HTTP.
+- **FR-038.2**: The service MUST use JSON for application request and response representations.
+- **FR-038.3**: The service MUST provide the `/product/equity` resource family.
+- **FR-038.4**: The service MUST provide the `/participant/broker` resource family.
+- **FR-038.5**: The service MUST provide the `/order` resource family.
+- **FR-038.6**: The service MUST provide the `/orderBook/{productId}` resource family.
+- **FR-038.7**: The service MUST provide the `/status` resource.
+- **FR-038.8**: The service MUST use `/internal` as its administration base path.
+- **FR-038.9**: The service MUST place participant resources directly at the service root.
+
+#### FR-039 — Bodyless resource reads
+
+Selectors include IDs, symbols, filters, and pagination. Bodyless reads do not require an empty JSON
+object.
+
+- **FR-039.1**: The system MUST make every resource read available through GET.
+- **FR-039.2**: A resource read MUST NOT require a request body.
+- **FR-039.3**: A resource read MUST NOT require a request Content-Type header.
+- **FR-039.4**: The system MUST accept read selectors through path or query parameters.
+- **FR-039.5**: A resource read MUST NOT require an Accept header.
+
+#### FR-040 — Common JSON envelope
+
+These rules apply to controller responses, middleware errors, liveness, empty collections,
+deletions, and unexpected failures. The existing envelope table defines message values and data
+contents; it remains normative interface data.
+
+- **FR-040.1**: Every JSON response MUST use only the top-level fields defined by the JSON Response
+  Envelope.
+- **FR-040.2**: Every JSON response MUST include a boolean `success` field.
+- **FR-040.3**: Every JSON response MUST include `responseCode`.
+- **FR-040.4**: Every JSON response MUST include a string `infoMessage` field.
+- **FR-040.5**: Every JSON response MUST include a string `warningMessage` field.
+- **FR-040.6**: Every JSON response MUST include a string `errorMessage` field.
+- **FR-040.7**: A JSON response MUST include `data` when the outcome has relevant result or failure
+  details.
+- **FR-040.8**: Every JSON response MUST declare Content-Type `application/json`.
+- **FR-040.9**: Every numeric application response code MUST be a JSON integer.
+
+#### FR-041 — Unexpected execution failures
+
+The failure success flag is defined in FR-029.2; the common envelope and correlation header are
+defined in FR-040 and FR-044.1.
+
+- **FR-041.1**: The system MUST return HTTP 500 for an unexpected execution failure.
+- **FR-041.2**: An unexpected-failure response MUST use numeric response code 999999.
+- **FR-041.3**: An unexpected-failure response MUST use error message `An unexpected error
+  occurred.`.
+- **FR-041.4**: An unexpected-failure response MUST use reason `INTERNAL_ERROR`.
+- **FR-041.5**: An error response MUST NOT expose exception text.
+- **FR-041.6**: An error response MUST NOT expose stack traces.
+- **FR-041.7**: An error response MUST NOT expose implementation or storage internals.
+- **FR-041.8**: An error response MUST NOT expose credentials.
+- **FR-041.9**: An error response MUST NOT expose private payloads.
+- **FR-041.10**: Detailed correlated failure diagnostics MUST remain internal.
+
+#### FR-042 — API date and time format
+
+The format specifies four-digit years, a 24-hour clock, and exactly three millisecond digits.
+Priority tie resolution is FR-033.4.
+
+- **FR-042.1**: Every API date/time value MUST use format `dd-MMM-yyyy HH:mm:ss.SSS`.
+- **FR-042.2**: API month abbreviations MUST be English.
+- **FR-042.3**: API date/time values MUST represent UTC.
+- **FR-042.4**: API date/time formatting MUST be independent of the host locale.
+- **FR-042.5**: API date/time formatting MUST be independent of the host timezone.
+- **FR-042.6**: Displayed date/time precision MUST NOT determine matching priority.
+
+#### FR-043 — Operation-specific codes and replay fidelity
+
+HTTP status distinguishes completed handling from request/execution failure; success distinguishes
+the business outcome. HTTP 200 with success=false is required by FR-029.1 and FR-029.2.
+
+- **FR-043.1**: Each operation MUST select the numeric response code for its own entity and outcome
+  from the result-code catalog.
+- **FR-043.2**: The `success` flag MUST represent the current business outcome independently of the
+  order's stored trading status.
+- **FR-043.3**: An idempotent replay MUST retain the original HTTP status.
+- **FR-043.4**: An idempotent replay MUST retain the original numeric response code.
+- **FR-043.5**: An idempotent replay MUST retain the original business payload.
+
+#### FR-044 — Response headers and successful HTTP outcomes
+
+Non-creation operations include reads, updates, amendments, cancellations, deletions, and liveness.
+These rules exclude a bodyless HTTP 204 deletion and caching of HTTP 200 rejection/entity-miss
+results. The envelope permits no extra top-level correlation field under FR-040.1.
+Business-rejection HTTP status is defined by FR-029.1.
+
+- **FR-044.1**: Every application-generated HTTP response MUST carry X-Correlation-ID.
+- **FR-044.2**: A successful creation MUST return HTTP 201.
+- **FR-044.3**: A successful non-creation operation MUST return HTTP 200.
+- **FR-044.4**: Every application-generated HTTP response MUST carry Cache-Control `no-store`.
+- **FR-044.5**: A successful deletion MUST include a JSON response body.
 
 ### API Resource Requirements
 
@@ -483,7 +1004,7 @@ base with no additional prefix. Planning defines the host addresses and precise 
 | `/orderBook/{productId}` | External participant read of aggregate depth and calculated metrics for that product. |
 | `/status` | Public GET liveness returning the running indication. |
 
-Trade-by-ID and trade-list reads required by FR-025 remain available within the `/order` resource
+Trade-by-ID and trade-list reads required by FR-025.1 and FR-025.2 remain available within the `/order` resource
 family; planning defines their selectors or subresources. This enhancement introduces no separate
 top-level trade resource. All read selectors are path/query inputs, never request-body inputs.
 Operations carrying a JSON request body must identify it as JSON; an unsupported or missing media
@@ -747,7 +1268,7 @@ mode results must be measured and reported separately before that mode is advert
 - **A-005 — Amendment meaning**: Quantity amendment specifies the new total including executions,
   not a delta or a new remaining quantity. A valid total is strictly greater than traded quantity;
   cancellation removes the remainder. Original submitted quantity and entry time remain immutable.
-  Current priority can change independently of original entry time as defined in FR-018.
+  Current priority can change independently of original entry time as defined in FR-018.8 through FR-018.11.
   Amendments require the current order version; cancellation removes the latest remainder without
   requiring a version, as confirmed during clarification.
 - **A-006 — Reference data changes**: Deletion is logical from the user's perspective and retains

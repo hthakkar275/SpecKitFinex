@@ -8,6 +8,7 @@ Spring Boot 4.1.0 and JDK 21; application implementation has not started.
 
 - [Project constitution](.specify/memory/constitution.md)
 - [Feature specification](specs/001-exchange-simulator/spec.md)
+- [Requirements traceability](specs/001-exchange-simulator/requirements-traceability.md)
 - [Implementation plan](specs/001-exchange-simulator/plan.md)
 - [HTTP API contract](specs/001-exchange-simulator/contracts/api.md)
 - [OpenAPI contract](specs/001-exchange-simulator/contracts/openapi.json)
